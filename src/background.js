@@ -71,6 +71,13 @@ chrome.runtime.onInstalled.addListener(() => {
     title: '智能模式（自动识别标题/作者）',
     contexts: ['action']  // 右键点击扩展图标时显示
   });
+  /*
+  chrome.contextMenus.create({
+    id: 'open-options',
+    title: '背景图设置',
+    contexts: ['action']  // 右键点击扩展图标时显示
+  });
+  */
 });
 
 // 监听右键菜单点击
@@ -92,6 +99,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         // 忽略错误（可能没有 content script）
       });
     });
+  }
+});
+
+// 打开选项页
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'open-options') {
+    chrome.runtime.openOptionsPage();
   }
 });
 

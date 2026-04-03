@@ -198,13 +198,21 @@ function extractTextFromDiv(divElement) {
 }
 
 // 打印图片函数
+// 打印图片函数 - 使用 Blob URL 方案（修复透明度）
 async function printImage(panelElement, contentElement, titleValue) {
   try {
-    // 保存当前滚动位置
+    // ========== 新增：读取保存的背景图和透明度 ==========
+    const storageResult = await chrome.storage.sync.get(['bgImage', 'bgOpacity']);
+    const savedBgImage = storageResult.bgImage || 'image/01.jpeg';
+    const savedBgOpacity = storageResult.bgOpacity || 0.7;
+    
+    console.log('读取保存的设置:', savedBgImage, savedBgOpacity);
+    // ===================================================
+
     const originalScrollX = window.scrollX;
     const originalScrollY = window.scrollY;
     
-    // 保存并隐藏工具栏和按钮
+    // 隐藏工具栏
     const originalCloseBtn = panelElement.querySelector('#fj-close-panel');
     const originalFooter = panelElement.querySelector('.fj-footer');
     const originalToolbar = panelElement.querySelector('.fj-title-toolbar');
@@ -226,261 +234,222 @@ async function printImage(panelElement, contentElement, titleValue) {
     if (originalLayoutToolbar) originalLayoutToolbar.style.display = 'none';
     if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = 'none';
 
-    // 获取纸张大小设置
+    // 获取纸张大小和方向设置
     const paperSizeSelect = document.getElementById('fj-paper-size');
-    let paperSize = 'A5';
-    if (paperSizeSelect) {
-      paperSize = paperSizeSelect.value;
-    }
-
-    // 获取用户选择的打印方向
+    let paperSize = paperSizeSelect ? paperSizeSelect.value : 'A5';
+    
     const orientationRadio = document.querySelector('input[name="layout-mode"]:checked');
-    let orientation = 'portrait';
-    if (orientationRadio) {
-        orientation = orientationRadio.value;
-    }
-    console.log("[DEBUG] 设置的打印方向：", orientationRadio.value);
-    /*
-    // 根据方向设置纸张
-    const pageSize = orientation === 'portrait' ? 'A5 portrait' : 'A5 landscape';
-    */
-    // 根据纸张大小和方向设置页面尺寸
-    let pageSize = '';
-    if (paperSize === 'A5') {
-      pageSize = orientation === 'portrait' ? 'A5 portrait' : 'A5 landscape';
-    } else {
-      pageSize = orientation === 'portrait' ? 'A4 portrait' : 'A4 landscape';
-    }
+    let orientation = orientationRadio ? orientationRadio.value : 'portrait';
     
-    // 根据纸张大小调整每页容量（用于分页）
-    let pageHeight = 0;
-    if (paperSize === 'A5') {
-      // A5 纸高度约 210mm，约 595px（72 DPI）
-      pageHeight = 800; // A5 每页可用高度（像素）
-    } else {
-      pageHeight = 1000; // A4 每页可用高度（像素）
-    }
-
-    // 根据是否分页修改水平对齐方式为右对齐
-    if (currentColumnCount > getMaxColumnsPerPage(paperSize)) {
-      horiAlign = 'flex-start';
-      console.log(`超过每页最大列数 ${getMaxColumnsPerPage(paperSize)}，改为右对齐`);
-    }
-    console.log('currentColumnCount:', currentColumnCount);
-
-    // 克隆整个面板内容
-    const printClone = contentElement.cloneNode(true);
+    const pageSize = orientation === 'portrait' ? 
+      (paperSize === 'A5' ? 'A5 portrait' : 'A4 portrait') : 
+      (paperSize === 'A5' ? 'A5 landscape' : 'A4 landscape');
     
-    // 获取当前面板的宽度
     const panelWidth = panelElement.offsetWidth;
+    let bgImageUrl = chrome.runtime.getURL('image/01.jpeg');
     
-    // 创建打印窗口
-    const printWindow = window.open('', '_blank');
-
-    // 获取背景图片地址
-    const bgImageUrl = chrome.runtime.getURL('image/01.jpeg');
-    //console.log('背景图片完整路径:', bgImageUrl);
+    // 获取克隆的内容
+    const contentClone = contentElement.cloneNode(true);
     
-    // 写入打印内容
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${escapeHtml(titleValue)} - 元素图文·雅集</title>
-        <meta charset="UTF-8">
-        <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          
-          html {
-            height: 100%;
-          }
+    bgImageUrl = chrome.runtime.getURL(savedBgImage);  // 用保存的背景图
+    const bgOpacity = savedBgOpacity;  // 用保存的透明度
+    console.log("保存的背景图透明度：", savedBgOpacity);
 
-          body {
-            margin: 0;
-            padding: 12px;
-            background: white;
-            font-family: '方正金陵', 'FZJinL-B_GBJF', '华文楷书', 'KaiTi', '宋体', serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            height: 100%;
-
-            /* 添加背景图片 */
-            background-image: url('${bgImageUrl}');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-          }
-
-          /* 新增：印章样式 */
-          .seal-stamp {
-            position: absolute;
-            bottom: 50px; /* 左下角距离底部20px */
-            left: 50px; /* 左下角距离左侧20px */
-            width: 60px; /* 印章大小，可调整 */
-            height: 60px;
-            opacity: 0.25; /* 50%透明度 */
-            z-index: 10; /* 确保在内容上方但不遮挡操作 */
-            pointer-events: none; /* 鼠标事件穿透，不影响点击 */
-            background-image: url('${chrome.runtime.getURL('image/seal.png')}'); /* 印章图片路径 */
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-          }
-          
-          .print-content {
-            width: ${panelWidth}px;
-            max-width: 90vw;
-            background: rgba(255, 255, 255, 0.7) !important;  /* 半透明白 */
-            border-radius: 16px;
-            padding: 20px;
-            box-sizing: border-box;
-
-            /* 添加 flex 布局实现垂直居中 */
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            min-height: 0;
-            align-items: center;
-
-            /* 添加外边距，露出原图边 */
-            margin: 20px !important;
-            
-            /* 可选：添加阴影增强立体感 */
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-          }
-
-          .vertical-content {
-            display: flex;
-            flex-direction: row-reverse;
-            justify-content: center;
-            align-items: flex-start;
-            gap: 10px 0;
-            min-height: auto;  /* 改为 auto，让高度自适应 */
-            /*min-height: 450px;*/
-            padding: 10px;
-          }
-                    
-          .vertical-paragraph {
-            writing-mode: vertical-rl;
-            text-orientation: upright;
-            font-size: 14pt;
-            margin: 0 0 0 7px;
-            display: inline-block;
-            vertical-align: top;
-            line-height: ${currentLineHeight};
-          }
-          
-          .vertical-paragraph.epigraph {
-            font-size: 10pt !important;
-          }
-          
-          @media print {            
-            .vertical-content {
-              /*
-              page-break-after: avoid;
-              page-break-inside: avoid;*/
-
-              /* 设置水平对齐方式 */
-              justify-content: ${horiAlign};
-            }
-            
-            @page {
-              size: ${pageSize};
-              margin: 5mm;
-              @top-center {
-                content: none;
-              }
-              @bottom-center {
-                content: none;
-              }
-              @top-left {
-                content: none;
-              }
-              @top-right {
-                content: none;
-              }
-              @bottom-left {
-                content: none;
-              }
-              @bottom-right {
-                content: none;
-              }
-
-              /* 确保字体平滑打印 */ 
-              /*
-              -webkit-font-smoothing: antialiased;
-              -moz-osx-font-smoothing: grayscale;
-              text-rendering: optimizeLegibility; 
-              */
-              
-              /* 设置页面缩放和分辨率 */
-              zoom: 100%;
-            }
-          }
-        </style>
-      </head>
-      <body>
-        <!-- 新增：印章元素 -->
-        <div class="seal-stamp"></div>
-
-        <div class="print-content">
-          ${printClone.innerHTML}
-        </div>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-    
-    // ========== 这里是你要加的位置 ==========
-    // 等待内容加载完成后触发打印
-    printWindow.onload = () => {
-      setTimeout(() => {
-        // 监听窗口获得焦点（打印对话框关闭后，原窗口会重新获得焦点）
-        const handleFocus = () => {
-          setTimeout(() => {
-            if (!printWindow.closed) {
-              printWindow.close();
-            }
-          }, 100);
-          printWindow.removeEventListener('focus', handleFocus);
+    // 构建 HTML 内容
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHtml(titleValue)} - 元素图文·雅集</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { height: 100%; }
+    body {
+      margin: 0;
+      padding: 12px;
+      background: white;
+      font-family: '方正金陵', 'FZJinL-B_GBJF', '华文楷书', 'KaiTi', '宋体', serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      height: 100%;
+      background-image: url('${bgImageUrl}');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+    }
+    .seal-stamp {
+      position: absolute;
+      bottom: 50px;
+      left: 50px;
+      width: 60px;
+      height: 60px;
+      opacity: 0.25;
+      z-index: 10;
+      pointer-events: none;
+      background-image: url('${chrome.runtime.getURL('image/seal.png')}');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    .opacity-controls {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 100;
+      background: rgba(255, 255, 255, ${bgOpacity});
+      border-radius: 30px;
+      padding: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    .opacity-controls button {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: #2c3e66;
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .opacity-controls button:hover { background: #1e2a4a; transform: scale(1.05); }
+    .opacity-value {
+      text-align: center;
+      font-size: 12px;
+      color: #2c3e66;
+      font-weight: bold;
+      margin-top: 4px;
+    }
+    .print-content {
+      width: ${panelWidth}px;
+      max-width: 90vw;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 16px;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 0;
+      align-items: center;
+      margin: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+    .vertical-content {
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 10px 0;
+      min-height: auto;
+      padding: 10px;
+    }
+    .vertical-paragraph {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-size: 14pt;
+      margin: 0 0 0 7px;
+      display: inline-block;
+      vertical-align: top;
+      line-height: ${currentLineHeight};
+    }
+    .vertical-paragraph.epigraph { font-size: 10pt !important; }
+    @media print {
+      .vertical-content { justify-content: ${horiAlign}; }
+      .opacity-controls { display: none !important; }
+      @page { size: ${pageSize}; margin: 5mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="seal-stamp"></div>
+  <div class="opacity-controls">
+    <button id="opacity-plus">+</button>
+    <button id="opacity-minus">-</button>
+    <div class="opacity-value" id="opacity-value-display">70%</div>
+  </div>
+  <div class="print-content" id="print-content">
+    ${contentClone.innerHTML}
+  </div>
+  <script>
+    (function() {
+      var contentDiv = document.getElementById('print-content');
+      var valueDisplay = document.getElementById('opacity-value-display');
+      // 直接存储当前透明度值
+      var currentOpacity = ${bgOpacity} || 0.7;
+      
+      function updateOpacity() {
+        if (contentDiv) {
+          // 直接设置内联样式，覆盖 CSS 类
+          contentDiv.style.background = 'rgba(255, 255, 255, ' + currentOpacity + ')';
+          console.log('设置透明度:', currentOpacity);
+        }
+        if (valueDisplay) {
+          valueDisplay.textContent = Math.round(currentOpacity * 100) + '%';
+        }
+      }
+      
+      // 绑定按钮事件
+      var plusBtn = document.getElementById('opacity-plus');
+      var minusBtn = document.getElementById('opacity-minus');
+      
+      if (plusBtn) {
+        plusBtn.onclick = function() {
+          currentOpacity = Math.min(1.0, currentOpacity + 0.05);
+          updateOpacity();
         };
-        
-        printWindow.addEventListener('focus', handleFocus);
-        
-        // 触发打印
-        printWindow.print();
-        
-        // 关闭打印窗口
-        // 备用方案：如果 onafterprint 支持，同时使用
-        /*
-        printWindow.onafterprint = () => {
-          setTimeout(() => {
-            if (!printWindow.closed) {
-              printWindow.close();
-            }
-          }, 100);
+      }
+      
+      if (minusBtn) {
+        minusBtn.onclick = function() {
+          currentOpacity = Math.max(0.3, currentOpacity - 0.05);
+          updateOpacity();
         };
-        
-        // 超时保护：5秒后强制关闭
+      }
+      
+      // 初始化
+      updateOpacity();
+    })();
+  <\/script>
+</body>
+</html>`;
+    
+    // 创建 Blob URL 打开打印窗口
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+    const printWindow = window.open(blobUrl, '_blank');
+    
+    if (printWindow) {
+      printWindow.onload = () => {
         setTimeout(() => {
-          if (!printWindow.closed) {
-            printWindow.close();
-          }
-        }, 15000);
-        */
-        
-      }, 300);
-    };
-    // ========== 上面的代码块加在这里 ==========
+          printWindow.print();
+          
+          const handleFocus = () => {
+            setTimeout(() => {
+              //if (!printWindow.closed) printWindow.close();
+            }, 100);
+            printWindow.removeEventListener('focus', handleFocus);
+          };
+          printWindow.addEventListener('focus', handleFocus);
+          
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        }, 300);
+      };
+    } else {
+      showToast('❌ 无法打开打印窗口', 1500);
+    }
     
-    // 恢复工具栏显示
+    // 恢复工具栏
     if (originalCloseBtn) originalCloseBtn.style.display = originalCloseDisplay || '';
     if (originalFooter) originalFooter.style.display = originalFooterDisplay || '';
     if (originalToolbar) originalToolbar.style.display = originalToolbarDisplay || '';
@@ -489,176 +458,10 @@ async function printImage(panelElement, contentElement, titleValue) {
     if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = originalLineHeightDisplay || '';
     
     window.scrollTo(originalScrollX, originalScrollY);
-    
-    showToast('🖨️ 打印窗口已打开，默认无页眉页脚', 1500);
+    showToast('🖨️ 打印窗口已打开', 1500);
   } catch (error) {
     console.error('打印失败:', error);
     showToast('❌ 打印失败', 1500);
-    window.scrollTo(originalScrollX, originalScrollY);
-  }
-}
-
-//下载图片函数
-async function captureAndDownload(panelElement, contentElement, titleValue) {
-  try {
-    const originalScrollX = window.scrollX;
-    const originalScrollY = window.scrollY;
-
-    // 【新增】保存并隐藏横向滚动条
-    const verticalContent = contentElement.querySelector('.vertical-content');
-    const originalOverflowX = verticalContent ? verticalContent.style.overflowX : '';
-    const originalOverflowY = verticalContent ? verticalContent.style.overflowY : '';
-    if (verticalContent) {
-      verticalContent.style.overflowX = 'hidden';  // 临时隐藏滚动条
-      verticalContent.style.overflowY = 'hidden';
-    }
-    
-    const originalCloseBtn = panelElement.querySelector('#fj-close-panel');
-    const originalFooter = panelElement.querySelector('.fj-footer');
-    const originalToolbar = panelElement.querySelector('.fj-title-toolbar');
-    const originalEpigraphToolbar = panelElement.querySelector('.fj-epigraph-toolbar');
-    const originalLayoutToolbar = panelElement.querySelector('.fj-layout-toolbar');
-    const originalLineHeightToolbar = panelElement.querySelector('.fj-lineheight-toolbar');
-    
-    const originalCloseDisplay = originalCloseBtn?.style.display;
-    const originalFooterDisplay = originalFooter?.style.display;
-    const originalToolbarDisplay = originalToolbar?.style.display;
-    const originalEpigraphDisplay = originalEpigraphToolbar?.style.display;
-    const originalLayoutDisplay = originalLayoutToolbar?.style.display;
-    const originalLineHeightDisplay = originalLineHeightToolbar?.style.display;
-    
-    if (originalCloseBtn) originalCloseBtn.style.display = 'none';
-    if (originalFooter) originalFooter.style.display = 'none';
-    if (originalToolbar) originalToolbar.style.display = 'none';
-    if (originalEpigraphToolbar) originalEpigraphToolbar.style.display = 'none';
-    if (originalLayoutToolbar) originalLayoutToolbar.style.display = 'none';
-    if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = 'none';
-    
-    const cloneContainer = document.createElement('div');
-    cloneContainer.id = 'fj-clone-container';
-    cloneContainer.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: ${panelElement.offsetWidth}px;
-      background: white;
-      z-index: 999999;
-      font-family: '方正金陵', 'FZJinL-B_GBJF', '华文楷书', 'KaiTi', '宋体', serif;
-    `;
-    
-    const contentClone = contentElement.cloneNode(true);
-    contentClone.style.cssText = `
-      padding: 20px 20px;
-      background: white;
-      margin: 0;
-    `;
-    
-    cloneContainer.appendChild(contentClone);
-    document.body.appendChild(cloneContainer);
-    
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    const devicePixelRatio = window.devicePixelRatio || 1;
-    const rect = cloneContainer.getBoundingClientRect();
-    
-    const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_PANEL' });
-    
-    if (response && response.success) {
-      const img = new Image();
-      img.onload = () => {
-        const scaleX = img.width / window.innerWidth;
-        const scaleY = img.height / window.innerHeight;
-        
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        canvas.width = rect.width * devicePixelRatio;
-        canvas.height = rect.height * devicePixelRatio;
-        canvas.style.width = `${rect.width}px`;
-        canvas.style.height = `${rect.height}px`;
-        
-        ctx.scale(devicePixelRatio, devicePixelRatio);
-        
-        ctx.drawImage(
-          img,
-          rect.left * scaleX, rect.top * scaleY,
-          rect.width * scaleX, rect.height * scaleY,
-          0, 0, rect.width, rect.height
-        );
-        
-        const link = document.createElement('a');
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        
-        let safeTitle = titleValue.replace(/[\\/:*?"<>|]/g, '-').trim();
-        if (safeTitle.length > 30) safeTitle = safeTitle.substring(0, 30);
-        if (!safeTitle) safeTitle = '无标题';
-        
-        link.download = `${safeTitle}-元素图文-${timestamp}.png`;
-        link.href = canvas.toDataURL('image/png', 1.0);
-        link.click();
-        
-        cloneContainer.remove();
-        
-        if (originalCloseBtn) originalCloseBtn.style.display = originalCloseDisplay || '';
-        if (originalFooter) originalFooter.style.display = originalFooterDisplay || '';
-        if (originalToolbar) originalToolbar.style.display = originalToolbarDisplay || '';
-        if (originalEpigraphToolbar) originalEpigraphToolbar.style.display = originalEpigraphDisplay || '';
-        if (originalLayoutToolbar) originalLayoutToolbar.style.display = originalLayoutDisplay || '';
-        if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = originalLineHeightDisplay || '';
-        
-        window.scrollTo(originalScrollX, originalScrollY);
-        
-        const tempToast = document.createElement('div');
-        tempToast.textContent = '✅ 图片已保存';
-        tempToast.style.cssText = `
-          position: fixed;
-          bottom: 20px;
-          right: 20px;
-          background: #1e293b;
-          color: white;
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-size: 0.8rem;
-          z-index: 10000000;
-          font-family: system-ui;
-        `;
-        document.body.appendChild(tempToast);
-        setTimeout(() => tempToast.remove(), 1500);
-      };
-      img.src = response.dataUrl;
-    } else {
-      throw new Error('截图失败');
-    }
-  } catch (error) {
-    console.error('截图失败:', error);
-    const clone = document.getElementById('fj-clone-container');
-    if (clone) clone.remove();
-    
-    const originalCloseBtn = panelElement?.querySelector('#fj-close-panel');
-    const originalFooter = panelElement?.querySelector('.fj-footer');
-    const originalToolbar = panelElement?.querySelector('.fj-title-toolbar');
-    if (originalCloseBtn) originalCloseBtn.style.display = '';
-    if (originalFooter) originalFooter.style.display = '';
-    if (originalToolbar) originalToolbar.style.display = '';
-    window.scrollTo(originalScrollX, originalScrollY);
-    
-    const errorToast = document.createElement('div');
-    errorToast.textContent = '❌ 截图失败';
-    errorToast.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #dc2626;
-      color: white;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      z-index: 10000000;
-      font-family: system-ui;
-    `;
-    document.body.appendChild(errorToast);
-    setTimeout(() => errorToast.remove(), 1500);
   }
 }
 

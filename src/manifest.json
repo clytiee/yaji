@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "古风竖排图片|支持诗词短文",
+  "name": "元素图文·雅集｜优雅的收藏诗词",
   "version": "1.0",
-  "description": "点击插件图标进入选择模式，点击div提取文字并在A5浮层中显示",
+  "description": "点击插件图标进入选择模式，点击元素提取文字并在浮层中显示",
   "permissions": ["activeTab", "scripting", "tabs", "contextMenus", "storage"],
   "host_permissions": ["<all_urls>"],
   "action": {
@@ -11,6 +11,7 @@
   "background": {
     "service_worker": "background.js"
   },
+  "options_page": "options/options.html",
   "web_accessible_resources": [{
     "resources": ["libs/html2canvas.min.js"],
     "resources": ["image/*"],

@@ -197,14 +197,42 @@ function extractTextFromDiv(divElement) {
   return text;
 }
 
-// 打印图片函数
 // 打印图片函数 - 使用 Blob URL 方案（修复透明度）
 async function printImage(panelElement, contentElement, titleValue) {
   try {
     // ========== 新增：读取保存的背景图和透明度 ==========
-    const storageResult = await chrome.storage.sync.get(['bgImage', 'bgOpacity']);
-    const savedBgImage = storageResult.bgImage || 'image/01.jpeg';
-    const savedBgOpacity = storageResult.bgOpacity || 0.7;
+    const syncResult = await chrome.storage.sync.get(['bgImage', 'bgOpacity', 'bgImageIsCustom']);
+    console.log('syncResult:', syncResult);
+    let bgImageUrl;
+    let bgOpacity = syncResult.bgOpacity || 0.7;
+
+    if (syncResult.bgImageIsCustom && syncResult.bgImage) {
+      // 自定义图片：从 storage.local 读取 DataURL
+      const localResult = await chrome.storage.local.get(['customImages']);
+      const customImages = localResult.customImages || [];
+      console.log('customImages 列表:', customImages);
+      console.log('要查找的 path:', syncResult.bgImage);
+
+      const customImg = customImages.find(img => img.path === syncResult.bgImage);
+      console.log('找到的图片:', customImg);
+
+      if (customImg && customImg.dataUrl) {
+        bgImageUrl = customImg.dataUrl;
+        console.log('使用自定义背景图 (从 local 读取)');
+      } else {
+        // 找不到则回退到默认
+        bgImageUrl = chrome.runtime.getURL('image/01.jpeg');
+        console.log('自定义图片不存在，回退到默认');
+      }
+    } else {
+      // 默认图片：使用扩展内路径
+      const bgImage = syncResult.bgImage || 'image/01.jpeg';
+      bgImageUrl = chrome.runtime.getURL(bgImage);
+      console.log('使用默认背景图:', bgImageUrl);
+    }
+
+    const savedBgImage = syncResult.bgImage || 'image/01.jpeg';
+    const savedBgOpacity = syncResult.bgOpacity || 0.7;
     
     console.log('读取保存的设置:', savedBgImage, savedBgOpacity);
     // ===================================================
@@ -246,13 +274,14 @@ async function printImage(panelElement, contentElement, titleValue) {
       (paperSize === 'A5' ? 'A5 landscape' : 'A4 landscape');
     
     const panelWidth = panelElement.offsetWidth;
-    let bgImageUrl = chrome.runtime.getURL('image/01.jpeg');
-    
+    //let bgImageUrl = chrome.runtime.getURL('image/01.jpeg');
+
     // 获取克隆的内容
     const contentClone = contentElement.cloneNode(true);
     
-    bgImageUrl = chrome.runtime.getURL(savedBgImage);  // 用保存的背景图
-    const bgOpacity = savedBgOpacity;  // 用保存的透明度
+    //bgImageUrl = chrome.runtime.getURL(savedBgImage);  // 用保存的背景图
+    bgImageUrl = syncResult.bgImageDataUrl || chrome.runtime.getURL(syncResult.bgImage || 'image/01.jpeg');
+    bgOpacity = savedBgOpacity;  // 用保存的透明度
     console.log("保存的背景图透明度：", savedBgOpacity);
 
     // 构建 HTML 内容

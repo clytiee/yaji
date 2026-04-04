@@ -304,6 +304,8 @@ async function printImage(panelElement, contentElement, titleValue) {
       min-height: 100vh;
       height: 100%;
       background-image: url('${bgImageUrl}');
+      //background-size: 100% auto;  /* 宽度100%，高度自动（可能被裁剪） */
+      //background-position: top center;  /* 顶部居中 */
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -1641,7 +1643,14 @@ function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function showToast(msg, duration = 2000) {
+async function showToast(msg, duration = 2000) {
+
+  const result = await chrome.storage.sync.get(['silentMode']);
+  const silentMode = result.silentMode || false;
+
+  console.log('[DEBUG] silentMode:', silentMode);
+  if (silentMode) return;
+
   console.log('[DEBUG] showToast:', msg);
   const toast = document.createElement('div');
   toast.textContent = msg;

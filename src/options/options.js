@@ -209,7 +209,7 @@ function setupPreviewHeight() {
   
   if (minusBtn) {
     minusBtn.addEventListener('click', () => {
-      previewHeight = Math.max(30, previewHeight - 10);
+      previewHeight = Math.max(30, previewHeight - 5);
       previewBox.style.height = previewHeight + 'vh';
       heightValue.textContent = previewHeight + '%';
       chrome.storage.sync.set({ previewHeight: previewHeight });
@@ -219,7 +219,7 @@ function setupPreviewHeight() {
   
   if (plusBtn) {
     plusBtn.addEventListener('click', () => {
-      previewHeight = Math.min(100, previewHeight + 10);
+      previewHeight = Math.min(100, previewHeight + 5);
       previewBox.style.height = previewHeight + 'vh';
       heightValue.textContent = previewHeight + '%';
       chrome.storage.sync.set({ previewHeight: previewHeight });

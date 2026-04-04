@@ -1,3 +1,15 @@
+async function sendMessageToTab(tabId, message) {
+  try {
+    // 先检查 content script 是否就绪
+    const response = await chrome.tabs.sendMessage(tabId, { action: 'PING' });
+    if (response === 'PONG') {
+      await chrome.tabs.sendMessage(tabId, message);
+    }
+  } catch (error) {
+    console.log('Content script 未就绪，跳过消息:', error.message);
+  }
+}
+
 // 点击插件图标时获取选中的文字并激活选择模式
 chrome.action.onClicked.addListener(async (tab) => {
   console.log('[Background] 插件图标被点击');
@@ -50,7 +62,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   if (request.action === 'CAPTURE_PANEL') {
     console.log('[Background] 开始截图...');
-    // 截图当前活动标签页的可见区域
     chrome.tabs.captureVisibleTab(null, { format: 'png', quality: 100 })
       .then(dataUrl => {
         console.log('[Background] 截图成功，数据长度:', dataUrl.length);
@@ -60,31 +71,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.error('[Background] 截图失败:', error);
         sendResponse({ success: false, error: error.message });
       });
-    return true; // 保持消息通道开放，等待异步响应
+    return true;
   }
 });
 
-// background.js
-
 // 创建菜单
 function createMenus() {
-  // 先清除所有菜单，避免重复
   chrome.contextMenus.removeAll(() => {
-    // 读取保存的状态
-    chrome.storage.sync.get(['smartMode', 'silentMode'], (result) => {
+    chrome.storage.sync.get(['smartMode', 'silentMode', 'plainMode'], (result) => {
       const smartMode = result.smartMode || false;
       const silentMode = result.silentMode || false;
+      const plainMode = result.plainMode || false;
       
-      // 创建菜单，根据保存的值设置标题（带勾选标记）
+      // 智能模式
       chrome.contextMenus.create({
         id: 'toggle-smart-mode',
         title: smartMode ? '✓ 智能模式（自动识别标题/作者）' : '智能模式（自动识别标题/作者）',
         contexts: ['action']
       });
       
+      // 静默模式
       chrome.contextMenus.create({
         id: 'toggle-silent-mode',
         title: silentMode ? '✓ 静默模式（不显示提示消息）' : '静默模式（不显示提示消息）',
+        contexts: ['action']
+      });
+
+      // 无图模式 - 修复：使用 plainMode，不是 silentMode
+      chrome.contextMenus.create({
+        id: 'toggle-plain-mode',
+        title: plainMode ? '✓ 无图模式（不显示背景图）' : '无图模式（不显示背景图）',
+        contexts: ['action']
+      });
+
+      // 背景图设置
+      chrome.contextMenus.create({
+        id: 'open-options',
+        title: '选项：背景图等设置',
         contexts: ['action']
       });
     });
@@ -101,102 +124,53 @@ chrome.runtime.onStartup.addListener(() => {
   createMenus();
 });
 
-// 处理菜单点击
+// 处理菜单点击（合并到一个监听器中）
 chrome.contextMenus.onClicked.addListener((info, tab) => {
+  // 智能模式切换
   if (info.menuItemId === 'toggle-smart-mode') {
-    // 切换状态
     chrome.storage.sync.get(['smartMode'], (result) => {
       const newValue = !(result.smartMode || false);
       chrome.storage.sync.set({ smartMode: newValue }, () => {
-        // 重新创建菜单，更新勾选状态
         createMenus();
-        
-        // 通知当前页面
-        chrome.tabs.sendMessage(tab.id, { 
+        sendMessageToTab(tab.id, { 
           action: 'SHOW_TOAST', 
-          message: newValue ? '智能模式已开启' : '智能模式已关闭' 
+          message: newValue ? '🧠 智能模式已开启' : '📝 手动模式已开启'
         });
       });
     });
   }
   
+  // 静默模式切换
   if (info.menuItemId === 'toggle-silent-mode') {
     chrome.storage.sync.get(['silentMode'], (result) => {
       const newValue = !(result.silentMode || false);
       chrome.storage.sync.set({ silentMode: newValue }, () => {
         createMenus();
-        
-        chrome.tabs.sendMessage(tab.id, { 
+        sendMessageToTab(tab.id, { 
           action: 'SHOW_TOAST', 
-          message: newValue ? '静默模式已开启（不再显示提示）' : '静默模式已关闭' 
+          message: newValue ? '🔇 静默模式已开启' : '🔊 静默模式已关闭'
         });
       });
     });
   }
-});
 
-// 监听右键菜单点击
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'toggle-smart-mode') {
-    chrome.storage.sync.get(['smartMode'], (result) => {
-      const newState = !result.smartMode;
-      chrome.storage.sync.set({ smartMode: newState });
-      
-      // 更新菜单标题显示状态
-      const menuTitle = newState ? '✓ 智能模式（已开启）' : '智能模式（已关闭）';
-      chrome.contextMenus.update('toggle-smart-mode', { title: menuTitle });
-      
-      // 向当前页面发送消息显示提示
-      chrome.tabs.sendMessage(tab.id, { 
-        action: 'SHOW_TOAST', 
-        message: newState ? '🧠 智能模式已开启' : '📝 手动模式'
-      }).catch(() => {
-        // 忽略错误（可能没有 content script）
+  // 无图模式切换
+  if (info.menuItemId === 'toggle-plain-mode') {
+    chrome.storage.sync.get(['plainMode'], (result) => {
+      const newValue = !(result.plainMode || false);
+      console.log("plainMode:", result.plainMode, "newValue:", newValue);
+      chrome.storage.sync.set({ plainMode: newValue }, () => {
+        createMenus();
+        sendMessageToTab(tab.id, { 
+          action: 'SHOW_TOAST', 
+          message: newValue ? '🖼️ 无图模式已开启' : '🎨 背景图模式已开启'
+        });
       });
     });
   }
-  if (info.menuItemId === 'toggle-silent-mode') {
-    chrome.storage.sync.get(['silentMode'], (result) => {
-      const newState = !result.silentMode;
-      chrome.storage.sync.set({ silentMode: newState });
-      
-      // 更新菜单标题显示状态
-      const menuTitle = newState ? '✓ 静默模式（已开启）' : '静默模式（已关闭）';
-      chrome.contextMenus.update('toggle-silent-mode', { title: menuTitle });
-      
-      // 向当前页面发送消息显示提示
-      chrome.tabs.sendMessage(tab.id, { 
-        action: 'SHOW_TOAST', 
-        message: newState ? '静默模式已开启' : '非静默模式'
-      }).catch(() => {
-        // 忽略错误（可能没有 content script）
-      });
-    });
-  }
-});
 
-// 打开选项页
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+  // 打开选项页
   if (info.menuItemId === 'open-options') {
     chrome.runtime.openOptionsPage();
-  }
-});
-
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'toggle-smart-mode') {
-    chrome.storage.sync.get(['smartMode'], (result) => {
-      const newState = !result.smartMode;
-      chrome.storage.sync.set({ smartMode: newState });
-      
-      // 更新菜单标题
-      const menuTitle = newState ? '✓ 智能模式（已开启）' : '智能模式（已关闭）';
-      chrome.contextMenus.update('toggle-smart-mode', { title: menuTitle });
-      
-      // 通知当前页面显示提示
-      chrome.tabs.sendMessage(tab.id, { 
-        action: 'SHOW_TOAST', 
-        message: newState ? '🧠 智能模式已开启（第1行→标题，第2行→作者）' : '📝 手动模式已开启'
-      }).catch(() => {});
-    });
   }
 });

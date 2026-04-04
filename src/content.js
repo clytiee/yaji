@@ -201,41 +201,48 @@ function extractTextFromDiv(divElement) {
 async function printImage(panelElement, contentElement, titleValue) {
   try {
     // ========== 新增：读取保存的背景图和透明度 ==========
-    const syncResult = await chrome.storage.sync.get(['bgImage', 'bgOpacity', 'bgImageIsCustom']);
+    const syncResult = await chrome.storage.sync.get(['bgImage', 'bgOpacity', 'bgImageIsCustom', 'plainMode']);
     console.log('syncResult:', syncResult);
     let bgImageUrl;
     let bgOpacity = syncResult.bgOpacity || 0.7;
+    let plainMode = syncResult.plainMode || false;
+    let savedBgImage = '';
+    let savedBgOpacity = 0.7;
 
-    if (syncResult.bgImageIsCustom && syncResult.bgImage) {
-      // 自定义图片：从 storage.local 读取 DataURL
-      const localResult = await chrome.storage.local.get(['customImages']);
-      const customImages = localResult.customImages || [];
-      console.log('customImages 列表:', customImages);
-      console.log('要查找的 path:', syncResult.bgImage);
-
-      const customImg = customImages.find(img => img.path === syncResult.bgImage);
-      console.log('找到的图片:', customImg);
-
-      if (customImg && customImg.dataUrl) {
-        bgImageUrl = customImg.dataUrl;
-        console.log('使用自定义背景图 (从 local 读取)');
-      } else {
-        // 找不到则回退到默认
-        bgImageUrl = chrome.runtime.getURL('image/01.jpeg');
-        console.log('自定义图片不存在，回退到默认');
-      }
+    if ( plainMode ) {
+      console.log("无背景图模式");
     } else {
-      // 默认图片：使用扩展内路径
-      const bgImage = syncResult.bgImage || 'image/01.jpeg';
-      bgImageUrl = chrome.runtime.getURL(bgImage);
-      console.log('使用默认背景图:', bgImageUrl);
-    }
+      if (syncResult.bgImageIsCustom && syncResult.bgImage) {
+        // 自定义图片：从 storage.local 读取 DataURL
+        const localResult = await chrome.storage.local.get(['customImages']);
+        const customImages = localResult.customImages || [];
+        console.log('customImages 列表:', customImages);
+        console.log('要查找的 path:', syncResult.bgImage);
 
-    const savedBgImage = syncResult.bgImage || 'image/01.jpeg';
-    const savedBgOpacity = syncResult.bgOpacity || 0.7;
-    
-    console.log('读取保存的设置:', savedBgImage, savedBgOpacity);
-    // ===================================================
+        const customImg = customImages.find(img => img.path === syncResult.bgImage);
+        console.log('找到的图片:', customImg);
+
+        if (customImg && customImg.dataUrl) {
+          bgImageUrl = customImg.dataUrl;
+          console.log('使用自定义背景图 (从 local 读取)');
+        } else {
+          // 找不到则回退到默认
+          bgImageUrl = chrome.runtime.getURL('image/01.jpeg');
+          console.log('自定义图片不存在，回退到默认');
+        }
+      } else {
+        // 默认图片：使用扩展内路径
+        const bgImage = syncResult.bgImage || 'image/01.jpeg';
+        bgImageUrl = chrome.runtime.getURL(bgImage);
+        console.log('使用默认背景图:', bgImageUrl);
+      }
+
+      savedBgImage = syncResult.bgImage || 'image/01.jpeg';
+      savedBgOpacity = syncResult.bgOpacity || 0.7;
+
+      console.log('读取保存的设置:', savedBgImage, savedBgOpacity);
+      // ===================================================
+    }
 
     const originalScrollX = window.scrollX;
     const originalScrollY = window.scrollY;
@@ -279,11 +286,23 @@ async function printImage(panelElement, contentElement, titleValue) {
     // 获取克隆的内容
     const contentClone = contentElement.cloneNode(true);
     
-    //bgImageUrl = chrome.runtime.getURL(savedBgImage);  // 用保存的背景图
-    bgImageUrl = syncResult.bgImageDataUrl || chrome.runtime.getURL(syncResult.bgImage || 'image/01.jpeg');
-    bgOpacity = savedBgOpacity;  // 用保存的透明度
-    console.log("保存的背景图透明度：", savedBgOpacity);
+    if (!plainMode) {
+      //bgImageUrl = chrome.runtime.getURL(savedBgImage);  // 用保存的背景图
+      bgImageUrl = syncResult.bgImageDataUrl || chrome.runtime.getURL(syncResult.bgImage || 'image/01.jpeg');
+      bgOpacity = savedBgOpacity;  // 用保存的透明度
+      console.log("保存的背景图透明度：", savedBgOpacity);
+    } else {
+      bgImageUrl = '';
+      bgOpacity = 1;
+    }
 
+    //背景
+    const backgroundStyle = plainMode ? 'background-color: white;' : `background-image: url('${bgImageUrl}');'`;
+    //文字区阴影
+    const boxShadowStyle = plainMode ? 'box-shadow: none;' : 'box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);';
+    //印章
+    const sealDisplay = plainMode ? 'display: none;' : 'display: block;';
+    
     // 构建 HTML 内容
     const htmlContent = `<!DOCTYPE html>
 <html>
@@ -303,7 +322,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       align-items: center;
       min-height: 100vh;
       height: 100%;
-      background-image: url('${bgImageUrl}');
+      ${backgroundStyle}
       //background-size: 100% auto;  /* 宽度100%，高度自动（可能被裁剪） */
       //background-position: top center;  /* 顶部居中 */
       background-size: cover;
@@ -312,6 +331,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       background-attachment: fixed;
     }
     .seal-stamp {
+      ${sealDisplay}
       position: absolute;
       bottom: 50px;
       left: 50px;
@@ -374,7 +394,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       min-height: 0;
       align-items: center;
       margin: 20px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      ${boxShadowStyle}
     }
     .vertical-content {
       display: flex;

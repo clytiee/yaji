@@ -516,6 +516,170 @@ async function printImage(panelElement, contentElement, titleValue) {
   }
 }
 
+//下载图片函数
+async function captureAndDownload(panelElement, contentElement, titleValue) {
+  try {
+    const originalScrollX = window.scrollX;
+    const originalScrollY = window.scrollY;
+
+    // 保存并隐藏横向滚动条
+    const verticalContent = contentElement.querySelector('.vertical-content');
+    const originalOverflowX = verticalContent ? verticalContent.style.overflowX : '';
+    const originalOverflowY = verticalContent ? verticalContent.style.overflowY : '';
+    if (verticalContent) {
+      verticalContent.style.overflowX = 'hidden';
+      verticalContent.style.overflowY = 'hidden';
+    }
+    
+    const originalCloseBtn = panelElement.querySelector('#fj-close-panel');
+    const originalFooter = panelElement.querySelector('.fj-footer');
+    const originalToolbar = panelElement.querySelector('.fj-title-toolbar');
+    const originalEpigraphToolbar = panelElement.querySelector('.fj-epigraph-toolbar');
+    const originalLayoutToolbar = panelElement.querySelector('.fj-layout-toolbar');
+    const originalLineHeightToolbar = panelElement.querySelector('.fj-lineheight-toolbar');
+    
+    const originalCloseDisplay = originalCloseBtn?.style.display;
+    const originalFooterDisplay = originalFooter?.style.display;
+    const originalToolbarDisplay = originalToolbar?.style.display;
+    const originalEpigraphDisplay = originalEpigraphToolbar?.style.display;
+    const originalLayoutDisplay = originalLayoutToolbar?.style.display;
+    const originalLineHeightDisplay = originalLineHeightToolbar?.style.display;
+    
+    if (originalCloseBtn) originalCloseBtn.style.display = 'none';
+    if (originalFooter) originalFooter.style.display = 'none';
+    if (originalToolbar) originalToolbar.style.display = 'none';
+    if (originalEpigraphToolbar) originalEpigraphToolbar.style.display = 'none';
+    if (originalLayoutToolbar) originalLayoutToolbar.style.display = 'none';
+    if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = 'none';
+    
+    const cloneContainer = document.createElement('div');
+    cloneContainer.id = 'fj-clone-container';
+    cloneContainer.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: ${panelElement.offsetWidth}px;
+      background: white;
+      z-index: 999999;
+      font-family: '方正金陵', 'FZJinL-B_GBJF', '华文楷书', 'KaiTi', '宋体', serif;
+    `;
+    
+    const contentClone = contentElement.cloneNode(true);
+    contentClone.style.cssText = `
+      padding: 20px 20px;
+      background: white;
+      margin: 0;
+    `;
+    
+    cloneContainer.appendChild(contentClone);
+    document.body.appendChild(cloneContainer);
+    
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    const rect = cloneContainer.getBoundingClientRect();
+    
+    const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_PANEL' });
+    
+    if (response && response.success) {
+      const img = new Image();
+      img.onload = () => {
+        const scaleX = img.width / window.innerWidth;
+        const scaleY = img.height / window.innerHeight;
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = rect.width * devicePixelRatio;
+        canvas.height = rect.height * devicePixelRatio;
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = `${rect.height}px`;
+        
+        ctx.scale(devicePixelRatio, devicePixelRatio);
+        
+        ctx.drawImage(
+          img,
+          rect.left * scaleX, rect.top * scaleY,
+          rect.width * scaleX, rect.height * scaleY,
+          0, 0, rect.width, rect.height
+        );
+        
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        
+        let safeTitle = titleValue.replace(/[\\/:*?"<>|]/g, '-').trim();
+        if (safeTitle.length > 30) safeTitle = safeTitle.substring(0, 30);
+        if (!safeTitle) safeTitle = '无标题';
+        
+        link.download = `${safeTitle}-元素图文-${timestamp}.png`;
+        link.href = canvas.toDataURL('image/png', 1.0);
+        link.click();
+        
+        cloneContainer.remove();
+        
+        if (originalCloseBtn) originalCloseBtn.style.display = originalCloseDisplay || '';
+        if (originalFooter) originalFooter.style.display = originalFooterDisplay || '';
+        if (originalToolbar) originalToolbar.style.display = originalToolbarDisplay || '';
+        if (originalEpigraphToolbar) originalEpigraphToolbar.style.display = originalEpigraphDisplay || '';
+        if (originalLayoutToolbar) originalLayoutToolbar.style.display = originalLayoutDisplay || '';
+        if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = originalLineHeightDisplay || '';
+        
+        window.scrollTo(originalScrollX, originalScrollY);
+        
+        const tempToast = document.createElement('div');
+        tempToast.textContent = '✅ 图片已保存';
+        tempToast.style.cssText = `
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          background: #1e293b;
+          color: white;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          z-index: 10000000;
+          font-family: system-ui;
+        `;
+        document.body.appendChild(tempToast);
+        setTimeout(() => tempToast.remove(), 1500);
+      };
+      img.src = response.dataUrl;
+    } else {
+      throw new Error('截图失败');
+    }
+  } catch (error) {
+    console.error('截图失败:', error);
+    const clone = document.getElementById('fj-clone-container');
+    if (clone) clone.remove();
+    
+    const originalCloseBtn = panelElement?.querySelector('#fj-close-panel');
+    const originalFooter = panelElement?.querySelector('.fj-footer');
+    const originalToolbar = panelElement?.querySelector('.fj-title-toolbar');
+    if (originalCloseBtn) originalCloseBtn.style.display = '';
+    if (originalFooter) originalFooter.style.display = '';
+    if (originalToolbar) originalToolbar.style.display = '';
+    window.scrollTo(originalScrollX, originalScrollY);
+    
+    const errorToast = document.createElement('div');
+    errorToast.textContent = '❌ 截图失败';
+    errorToast.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #dc2626;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      z-index: 10000000;
+      font-family: system-ui;
+    `;
+    document.body.appendChild(errorToast);
+    setTimeout(() => errorToast.remove(), 1500);
+  }
+}
+
 // 根据纸张大小计算每列最大字数
 function getMaxCharsPerColumn(paperSize, panelWidth) {
   // 根据面板宽度估算每列可容纳字数

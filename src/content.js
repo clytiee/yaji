@@ -269,18 +269,61 @@ async function printImage(panelElement, contentElement, titleValue) {
     if (originalLayoutToolbar) originalLayoutToolbar.style.display = 'none';
     if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = 'none';
 
+    let paperMargin;
+    let sealPosition;
+    let sealSize;
+    let epiFontSize;
+    let bodyPadding;
+    let contentPadding;
+    let vContentPadding;
+    let contentMargin;
+    let titleFontStyle;
+    let subtitleFontStyle
+
     // 获取纸张大小和方向设置
     const paperSizeSelect = document.getElementById('fj-paper-size');
-    let paperSize = paperSizeSelect ? paperSizeSelect.value : 'A5';
+    paperSize = paperSizeSelect ? paperSizeSelect.value : 'A5';
     
     const orientationRadio = document.querySelector('input[name="layout-mode"]:checked');
     let orientation = orientationRadio ? orientationRadio.value : 'portrait';
+
+    let panelWidth;
+    if ( paperSize === 'mobile' ) {
+      paperSize = '70mm 120mm';
+      paperMargin = '2mm';
+      sealPosition = 'bottom: 30px; left: 30px;'
+      sealSize = 'width: 25px; height: 25px;';
+      fontSize = '10pt;';
+      lineHeight = '1';
+      epiFontSize = '8pt;';
+      bodyPadding = '8px;';
+      contentPadding = '10px;';
+      vContentPadding = '5px;';
+      contentMargin = '8px;';
+      titleFontStyle = 'font-size: 10pt; font-weight: bold;';
+      subtitleFontStyle = 'font-size: 8pt;';
+      panelWidth = '375';
+    } else {
+      paperSize = orientation === 'portrait' ? 
+        (paperSize === 'A5' ? 'A5 portrait' : 'A4 portrait') : 
+        (paperSize === 'A5' ? 'A5 landscape' : 'A4 landscape');
+      sealPosition = 'bottom: 50px; left: 50px;'
+      paperMargin = '5mm';
+      sealSize = 'width: 50px; height: 50px;';
+      fontSize = '14pt';
+      epiFontSize = '10pt;';
+      lineHeight = currentLineHeight;
+      bodyPadding = '12px;';
+      contentPadding = '20px;';
+      vContentPadding = '10px;';
+      contentMargin = '20px;';
+      titleFontStyle = 'font-size: 1rem; font-weight: bold;';
+      subtitleFontStyle = 'font-size: 0.8rem;';
+      panelWidth = panelElement.offsetWidth;
+    }
+    console.log("paperSize:", paperSize, "fontSize:", fontSize);
     
-    const pageSize = orientation === 'portrait' ? 
-      (paperSize === 'A5' ? 'A5 portrait' : 'A4 portrait') : 
-      (paperSize === 'A5' ? 'A5 landscape' : 'A4 landscape');
-    
-    const panelWidth = panelElement.offsetWidth;
+    console.log("panelWidth:", panelWidth);
     //let bgImageUrl = chrome.runtime.getURL('image/01.jpeg');
 
     // 获取克隆的内容
@@ -313,8 +356,9 @@ async function printImage(panelElement, contentElement, titleValue) {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { height: 100%; }
     body {
+      //border: solid 1px blue;
       margin: 0;
-      padding: 12px;
+      padding: ${bodyPadding}
       background: white;
       font-family: '方正金陵', 'FZJinL-B_GBJF', '华文楷书', 'KaiTi', '宋体', serif;
       display: flex;
@@ -333,10 +377,8 @@ async function printImage(panelElement, contentElement, titleValue) {
     .seal-stamp {
       ${sealDisplay}
       position: absolute;
-      bottom: 50px;
-      left: 50px;
-      width: 60px;
-      height: 60px;
+      ${sealPosition}
+      ${sealSize}
       opacity: 0.25;
       z-index: 10;
       pointer-events: none;
@@ -382,43 +424,53 @@ async function printImage(panelElement, contentElement, titleValue) {
       margin-top: 4px;
     }
     .print-content {
+      //border: solid 1px red;
       width: ${panelWidth}px;
-      max-width: 90vw;
+      max-width: 100vw;
       background: rgba(255, 255, 255, 0.7);
       border-radius: 16px;
-      padding: 20px;
+      padding: ${contentPadding}
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
       justify-content: center;
       min-height: 0;
       align-items: center;
-      margin: 20px;
+      margin: ${contentMargin}
       ${boxShadowStyle}
     }
     .vertical-content {
+      //border: solid 1px green;
       display: flex;
       flex-direction: row-reverse;
       justify-content: center;
       align-items: flex-start;
       gap: 10px 0;
       min-height: auto;
-      padding: 10px;
+      max-height: 120mm;
+      padding: ${vContentPadding}
     }
     .vertical-paragraph {
       writing-mode: vertical-rl;
       text-orientation: upright;
-      font-size: 14pt;
+      font-size: ${fontSize};
       margin: 0 0 0 7px;
       display: inline-block;
       vertical-align: top;
       line-height: ${currentLineHeight};
     }
-    .vertical-paragraph.epigraph { font-size: 10pt !important; }
+    .vertical-paragraph.epigraph { font-size: ${epiFontSize} !important; }
+    .title { ${titleFontStyle} !important;}
+    .subtitle { ${subtitleFontStyle} !important;}
+
     @media print {
+      body, .vertical-paragraph {
+        font-size: ${fontSize};
+        line-height: ${lineHeight};
+      }
       .vertical-content { justify-content: ${horiAlign}; }
       .opacity-controls { display: none !important; }
-      @page { size: ${pageSize}; margin: 5mm; }
+      @page { size: ${paperSize}; margin: ${paperMargin}; }
     }
   </style>
 </head>
@@ -552,6 +604,8 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
     if (originalLayoutToolbar) originalLayoutToolbar.style.display = 'none';
     if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = 'none';
     
+    console.log("下载图片，获取宽度：", contentElement.offsetWidth);
+
     const cloneContainer = document.createElement('div');
     cloneContainer.id = 'fj-clone-container';
     cloneContainer.style.cssText = `
@@ -559,7 +613,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: ${panelElement.offsetWidth}px;
+      width: ${contentElement.offsetWidth}px;
       background: white;
       z-index: 999999;
       font-family: '方正金陵', 'FZJinL-B_GBJF', '华文楷书', 'KaiTi', '宋体', serif;
@@ -688,24 +742,48 @@ function getMaxCharsPerColumn(paperSize, panelWidth) {
   // 14pt ≈ 14/72 * 25.4 ≈ 4.94mm
   const charWidth = 5; // 约 5mm
   let widthInMM = 0;
+  let maxChars;
   
+  /*
   if (paperSize === 'A5') {
     widthInMM = 148; // A5 宽度 148mm
-  } else {
+  } else if (paperSize === 'A4') {
     widthInMM = 210; // A4 宽度 210mm
+  } else {
+    widthInMM = 60; //手机 宽度 60mm
   }
   
   // 减去左右 padding (40mm) 和列间距
   const availableWidth = widthInMM - 40; // 减去边距
   const maxColumns = Math.floor(availableWidth / charWidth);
+  */
   
   // 返回每列最大字数（A5约37字，A4约52字）
-  return paperSize === 'A5' ? 35 : 50;
+  //return paperSize === 'A5' ? 35 : 50;
+  if (paperSize === 'A5') {
+    maxChars = 35;
+  } else if (paperSize === 'A4') {
+    maxChars = 50;
+  } else {
+    maxChars = 28;
+  }
+  console.log("每列最大字数：", maxChars);
+  return maxChars;
 }
 
 function getMaxColumnsPerPage(paperSize) {
   // 返回每页最大列数（A5约17，A4约34）
-  return paperSize === 'A5' ? 18 : 36;
+  //return paperSize === 'A5' ? 18 : 36;
+  let maxCols;
+  if (paperSize === 'A5') {
+    maxCols = 18;
+  } else if (paperSize === 'A4') {
+    maxCols = 36;
+  } else {
+    maxCols = 9;
+  }
+  console.log("每页最大列数：", maxCols);
+  return maxCols;
 }
 
 function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
@@ -723,6 +801,8 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
   let currentSubtitle = selectedSubtitle;
   let currentTitle = defaultTitle;
   let windowEditedText = null;
+
+  let paperSize;
   
   const subtitleInput = document.createElement('input');
   subtitleInput.id = 'fj-subtitle-input';
@@ -750,8 +830,8 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
   const panel = document.createElement('div');
   panel.id = 'fj-a5-panel';
   panel.style.cssText = `
-    width: 148mm;
-    height: 210mm;
+    width: 160mm;
+    height: 220mm;
     max-width: 90vw;
     background: white;
     border-radius: 16px;
@@ -766,6 +846,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     flex-direction: column;
     position: relative;
     animation: fjSlideUp 0.25s ease-out;
+    align-items: center;
   `;
   
   if (!document.getElementById('fj-anim-style')) {
@@ -833,7 +914,12 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
   `;
   
   const titleContainer = document.createElement('div');
-  titleContainer.style.cssText = `display: flex; align-items: center; gap: 8px; flex: 1; flex-wrap: wrap;`;
+  titleContainer.style.cssText = `
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    flex: 1; 
+    flex-wrap: wrap;`;
   
   const titleIcon = document.createElement('span');
   titleIcon.textContent = '📄';
@@ -851,7 +937,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     border-radius: 8px;
     padding: 6px 12px;
     background: #f8fafc;
-    width: 220px;
+    width: 260px;
   `;
   
   subtitleInput.style.cssText = `
@@ -863,7 +949,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     padding: 6px 12px;
     background: #f8fafc;
     color: #64748b;
-    width: 160px;
+    width: 170px;
   `;
   
   titleContainer.appendChild(titleIcon);
@@ -891,6 +977,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     font-size: 0.8rem;
     font-family: system-ui;
     flex-wrap: wrap;
+    width: 93%;
   `;
   epigraphToolbar.innerHTML = `
     <span>📜 题记</span>
@@ -925,6 +1012,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     gap: 10px;
     font-size: 0.8rem;
     font-family: system-ui;
+    width: 93%;
   `;
   let layoutMode = 'portrait';
   layoutToolbar.innerHTML = `
@@ -932,6 +1020,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     <select id="fj-paper-size" style="padding:4px 4px; border:1px solid #cbd5e1; border-radius:6px; background:#f1f5f9; cursor:pointer;">
         <option value="A5" selected>A5</option>
         <option value="A4">A4</option>
+        <option value="mobile">手机</option>
     </select>
 
     <span style="padding-left: 10px;">方向</span>
@@ -966,7 +1055,15 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
   
   // 内容区域
   const contentArea = document.createElement('div');
-  contentArea.style.cssText = `padding: 16px 16px; background: white; flex: 1; overflow-y: auto; min-height: 300px;`;
+  contentArea.id = 'content-area';
+  contentArea.style.cssText = `
+    width: 148mm;
+    height: 210mm;
+    padding: 16px 16px;
+    background: white;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 300px;`;
   
   // ========== 功能函数 ==========
   
@@ -996,7 +1093,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     verticalContent.style.flexWrap = 'wrap';
     verticalContent.style.overflowX = 'visible';
     verticalContent.style.overflowY = 'visible';
-    verticalContent.style.minHeight = '250px';   
+    //verticalContent.style.minHeight = '250px';   
     layoutMode = mode;
   }
   
@@ -1079,13 +1176,22 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     oldEpigraphCount = columnsToReplace.length;
     console.log(`[DEBUG] 题记范围共 ${columnsToReplace.length} 列，合并后 ${epigraphText.length} 字`);
     
+    // 获取纸张大小和方向设置
+    const paperSizeSelect = document.getElementById('fj-paper-size');
+    const paperSize = paperSizeSelect ? paperSizeSelect.value : 'A5';
+
     // 按 50 字重新拆分
-    const maxCharsEpigraph = 50;
+    let maxCharsEpigraph;
+    if (paperSize == 'mobile') {
+      maxCharsEpigraph = 20;
+    } else {
+      maxCharsEpigraph = 50;
+    }
     const chars = epigraphText.split('');
     const newColumnCount = Math.ceil(chars.length / maxCharsEpigraph);
     
     if (oldEpigraphCount > 1) {
-        console.log(`[DEBUG] 重新拆分为 ${newColumnCount} 列（50字/列）`);
+        console.log(`[DEBUG] 重新拆分为 ${newColumnCount} 列（ ${maxCharsEpigraph}字/列）`);
         
         // 创建新列
         const newColumns = [];
@@ -1245,11 +1351,11 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     
     let titleHtml = '';
     if (subtitleText && subtitleText.trim() !== '') {
-      titleHtml = `<div class="vertical-paragraph" style="font-weight: bold; margin-bottom: 20px;">
-        ${escapeHtml(titleText)}&emsp;<span style="font-size: 11pt; font-weight: normal;">${escapeHtml(subtitleText.trim())}</span>
+      titleHtml = `<div class="vertical-paragraph title">
+        ${escapeHtml(titleText)}&emsp;<span class="subtitle">${escapeHtml(subtitleText.trim())}</span>
       </div>`;
     } else {
-      titleHtml = `<div class="vertical-paragraph" style="font-weight: bold;">${escapeHtml(titleText)}</div>`;
+      titleHtml = `<div class="vertical-paragraph subtitle">${escapeHtml(titleText)}</div>`;
     }
     
     //const paragraphs = sourceText.split(/\n+/);
@@ -1257,6 +1363,10 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     let contentHtml = '';
     let totalColumns = 0;
     let columnCount = 0;
+
+    // 获取纸张大小和方向设置
+    const paperSizeSelect = document.getElementById('fj-paper-size');
+    const paperSize = paperSizeSelect ? paperSizeSelect.value : 'A5';
     
     // 获取每列最大字数
     const maxChars = getMaxCharsPerColumn(currentPaperSize);
@@ -1313,6 +1423,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
           targetLineHeight = 2;
       }
     }
+    if (paperSize === 'mobile') targetLineHeight = 1;
     console.log("自动调整行距为：", targetLineHeight);
     
     allParagraphs.forEach(para => {
@@ -1537,6 +1648,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 93%;
   `;
   footer.innerHTML = `
     <span>✍️ 方正金陵 · 竖排版</span>
@@ -1737,15 +1849,21 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
         currentPaperSize = e.target.value;
         showToast(`纸张大小已切换为 ${currentPaperSize}`, 1000);
         
-        // 如果是 A5，调整面板大小为 148x210mm
-        if (currentPaperSize === 'A5') {
-          panel.style.width = '148mm';
-          panel.style.height = '210mm';
-        } else {
-          panel.style.width = '210mm';
-          panel.style.height = '297mm';
+        // 如果是 A5，调整内容区域大小为 148x210mm
+        const contentArea = document.getElementById('content-area');
+        if (contentArea) {
+          if (currentPaperSize === 'A5') {
+            contentArea.style.width = '148mm';
+            contentArea.style.height = '210mm';
+          } else if (currentPaperSize === 'A4') {
+            contentArea.style.width = '210mm';
+            contentArea.style.height = '297mm';
+          } else if (currentPaperSize === 'mobile') {
+            contentArea.style.width = '90mm';
+            contentArea.style.height = '150mm';
+          }
         }
-        console.log("[DEBUG] panel size: ", panel.style.width, panel.style.height);
+        console.log("[DEBUG] 调整内容区域大小: ", contentArea.style.width, contentArea.style.height);
         // ✅ 关键：重新渲染内容，应用新的每列字数
         const currentText = window.editedText || text;
         renderVerticalContent(currentText);

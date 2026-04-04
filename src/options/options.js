@@ -1,6 +1,6 @@
 // 生成 01-13 的默认背景图列表
 const defaultBgImages = [];
-for (let i = 1; i <= 21; i++) {
+for (let i = 1; i <= 28; i++) {
   const num = i.toString().padStart(2, '0');
   defaultBgImages.push({
     name: num,

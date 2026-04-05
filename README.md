@@ -24,3 +24,6 @@
 
 ## 背景图2
 <img width="1000" height="660" alt="image" src="https://github.com/user-attachments/assets/1215559e-9e16-4d27-9a4e-a5c279a241df" />
+
+## 无图模式，尺寸 A5
+<img width="1000" height="660" alt="image" src="https://github.com/user-attachments/assets/a7e3a18f-172d-4a92-8dcf-97057b86195c" />

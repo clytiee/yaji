@@ -447,7 +447,6 @@ async function printImage(panelElement, contentElement, titleValue) {
       align-items: flex-start;
       gap: 10px 0;
       min-height: auto;
-      max-height: 120mm;
       padding: ${vContentPadding}
     }
     .vertical-paragraph {

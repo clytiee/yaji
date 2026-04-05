@@ -247,28 +247,6 @@ async function printImage(panelElement, contentElement, titleValue) {
     const originalScrollX = window.scrollX;
     const originalScrollY = window.scrollY;
     
-    // 隐藏工具栏
-    const originalCloseBtn = panelElement.querySelector('#fj-close-panel');
-    const originalFooter = panelElement.querySelector('.fj-footer');
-    const originalToolbar = panelElement.querySelector('.fj-title-toolbar');
-    const originalEpigraphToolbar = panelElement.querySelector('.fj-epigraph-toolbar');
-    const originalLayoutToolbar = panelElement.querySelector('.fj-layout-toolbar');
-    const originalLineHeightToolbar = panelElement.querySelector('.fj-lineheight-toolbar');
-    
-    const originalCloseDisplay = originalCloseBtn?.style.display;
-    const originalFooterDisplay = originalFooter?.style.display;
-    const originalToolbarDisplay = originalToolbar?.style.display;
-    const originalEpigraphDisplay = originalEpigraphToolbar?.style.display;
-    const originalLayoutDisplay = originalLayoutToolbar?.style.display;
-    const originalLineHeightDisplay = originalLineHeightToolbar?.style.display;
-    
-    if (originalCloseBtn) originalCloseBtn.style.display = 'none';
-    if (originalFooter) originalFooter.style.display = 'none';
-    if (originalToolbar) originalToolbar.style.display = 'none';
-    if (originalEpigraphToolbar) originalEpigraphToolbar.style.display = 'none';
-    if (originalLayoutToolbar) originalLayoutToolbar.style.display = 'none';
-    if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = 'none';
-
     let paperMargin;
     let sealPosition;
     let sealSize;
@@ -395,7 +373,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       flex-direction: column;
       gap: 8px;
       z-index: 100;
-      background: rgba(255, 255, 255, ${bgOpacity});
+      background: rgba(255, 255, 255, 0.5);
       border-radius: 30px;
       padding: 8px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -405,7 +383,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       height: 36px;
       border-radius: 50%;
       border: none;
-      background: #2c3e66;
+      background: rgba(44, 62, 102, 0.7);
       color: white;
       font-size: 20px;
       font-weight: bold;
@@ -427,7 +405,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       //border: solid 1px red;
       width: ${panelWidth}px;
       max-width: 100vw;
-      background: rgba(255, 255, 255, 0.7);
+      background: rgba(255, 255, 255, ${bgOpacity});
       border-radius: 16px;
       padding: ${contentPadding}
       box-sizing: border-box;
@@ -550,15 +528,7 @@ async function printImage(panelElement, contentElement, titleValue) {
     } else {
       showToast('❌ 无法打开打印窗口', 1500);
     }
-    
-    // 恢复工具栏
-    if (originalCloseBtn) originalCloseBtn.style.display = originalCloseDisplay || '';
-    if (originalFooter) originalFooter.style.display = originalFooterDisplay || '';
-    if (originalToolbar) originalToolbar.style.display = originalToolbarDisplay || '';
-    if (originalEpigraphToolbar) originalEpigraphToolbar.style.display = originalEpigraphDisplay || '';
-    if (originalLayoutToolbar) originalLayoutToolbar.style.display = originalLayoutDisplay || '';
-    if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = originalLineHeightDisplay || '';
-    
+        
     window.scrollTo(originalScrollX, originalScrollY);
     showToast('🖨️ 打印窗口已打开', 1500);
   } catch (error) {
@@ -581,7 +551,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       verticalContent.style.overflowX = 'hidden';
       verticalContent.style.overflowY = 'hidden';
     }
-    
+
     const originalCloseBtn = panelElement.querySelector('#fj-close-panel');
     const originalFooter = panelElement.querySelector('.fj-footer');
     const originalToolbar = panelElement.querySelector('.fj-title-toolbar');
@@ -602,8 +572,26 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
     if (originalEpigraphToolbar) originalEpigraphToolbar.style.display = 'none';
     if (originalLayoutToolbar) originalLayoutToolbar.style.display = 'none';
     if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = 'none';
-    
+        
     console.log("下载图片，获取宽度：", contentElement.offsetWidth);
+
+    let bgImage;
+    let bgImageUrl;
+    const syncResult = await chrome.storage.sync.get(['bgImage', 'bgOpacity', 'bgImageIsCustom', 'plainMode']);
+    let plainMode = syncResult.plainMode || false;
+    if ( plainMode ) {
+      bgImage = '';
+      bgImageUrl = '';
+      console.log("无背景图模式");
+    } else {
+      bgImage = syncResult.bgImage || 'image/01.jpeg';
+      bgImageUrl = chrome.runtime.getURL(bgImage);
+      console.log('使用自带背景图:', bgImageUrl);
+    }
+    const bgOpacity = syncResult.bgOpacity || 0.7;
+    console.log('读取背景图设置:', bgImage, bgOpacity, bgImageUrl);
+
+    const bgStyle = plainMode === true ? 'background-color: white;' : `background-image: url('${bgImageUrl}');'`;
 
     const cloneContainer = document.createElement('div');
     cloneContainer.id = 'fj-clone-container';
@@ -613,17 +601,31 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       left: 50%;
       transform: translate(-50%, -50%);
       width: ${contentElement.offsetWidth}px;
-      background: white;
-      z-index: 999999;
+      z-index: 9999;
       font-family: '方正金陵', 'FZJinL-B_GBJF', '华文楷书', 'KaiTi', '宋体', serif;
+      ${bgStyle};
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      padding: 20px;
     `;
     
     const contentClone = contentElement.cloneNode(true);
+    contentClone.id = 'clone-content-area';
     contentClone.style.cssText = `
+      display: block;
       padding: 20px 20px;
-      background: white;
+      background: rgba(255, 255, 255, ${bgOpacity});
       margin: 0;
+      z-index: 9999;
+      border-radius: 16px;
     `;
+
+    const originalContentArea = panelElement.querySelector('#content-area');
+    const originalContentAreaDisplay = originalContentArea?.style.display;
+
+    if (panelElement) panelElement.style.display = 'none';
+    if (originalContentArea) originalContentArea.style.display = 'none';
     
     cloneContainer.appendChild(contentClone);
     document.body.appendChild(cloneContainer);
@@ -650,6 +652,10 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
         canvas.style.height = `${rect.height}px`;
         
         ctx.scale(devicePixelRatio, devicePixelRatio);
+
+        console.log("scaleX:", scaleX, "scaleY:", scaleY, "devicePixelRatio:", devicePixelRatio);
+        console.log("canvas:", canvas);
+        console.log("rect:", rect);
         
         ctx.drawImage(
           img,
@@ -670,14 +676,18 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
         link.click();
         
         cloneContainer.remove();
-        
+
+        if (panelElement) panelElement.style.display = 'block';
+
         if (originalCloseBtn) originalCloseBtn.style.display = originalCloseDisplay || '';
         if (originalFooter) originalFooter.style.display = originalFooterDisplay || '';
         if (originalToolbar) originalToolbar.style.display = originalToolbarDisplay || '';
         if (originalEpigraphToolbar) originalEpigraphToolbar.style.display = originalEpigraphDisplay || '';
         if (originalLayoutToolbar) originalLayoutToolbar.style.display = originalLayoutDisplay || '';
         if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = originalLineHeightDisplay || '';
-        
+                
+        if (originalContentArea) originalContentArea.style.display = originalContentAreaDisplay || '';
+
         window.scrollTo(originalScrollX, originalScrollY);
         
         const tempToast = document.createElement('div');
@@ -691,7 +701,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
           padding: 8px 16px;
           border-radius: 8px;
           font-size: 0.8rem;
-          z-index: 10000000;
+          z-index: 100;
           font-family: system-ui;
         `;
         document.body.appendChild(tempToast);
@@ -705,15 +715,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
     console.error('截图失败:', error);
     const clone = document.getElementById('fj-clone-container');
     if (clone) clone.remove();
-    
-    const originalCloseBtn = panelElement?.querySelector('#fj-close-panel');
-    const originalFooter = panelElement?.querySelector('.fj-footer');
-    const originalToolbar = panelElement?.querySelector('.fj-title-toolbar');
-    if (originalCloseBtn) originalCloseBtn.style.display = '';
-    if (originalFooter) originalFooter.style.display = '';
-    if (originalToolbar) originalToolbar.style.display = '';
-    window.scrollTo(originalScrollX, originalScrollY);
-    
+        
     const errorToast = document.createElement('div');
     errorToast.textContent = '❌ 截图失败';
     errorToast.style.cssText = `
@@ -725,7 +727,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       padding: 8px 16px;
       border-radius: 8px;
       font-size: 0.8rem;
-      z-index: 10000000;
+      z-index: 100;
       font-family: system-ui;
     `;
     document.body.appendChild(errorToast);
@@ -818,7 +820,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 999999;
+    z-index: 999;
     display: flex;
     justify-content: center;
     align-items: center;

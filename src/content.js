@@ -829,7 +829,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
   const panel = document.createElement('div');
   panel.id = 'fj-a5-panel';
   panel.style.cssText = `
-    width: 160mm;
+    width: 170mm;
     height: 220mm;
     max-width: 90vw;
     background: white;
@@ -1021,6 +1021,9 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
         <option value="A4">A4</option>
         <option value="mobile">手机</option>
     </select>
+    <label style="display: flex; align-items: center; gap: 4px;">
+      <input type="checkbox" id="fj-remember-paper-size"> 记住
+    </label>
 
     <span style="padding-left: 10px;">方向</span>
     <label><input type="radio" name="layout-mode" value="portrait" checked> 竖向</label>
@@ -1675,6 +1678,81 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
   autoCloseCheckbox.addEventListener('change', (e) => {
     chrome.storage.sync.set({ autoCloseAfterAction: e.target.checked });
   });
+
+  // ========== 纸张尺寸记忆功能 ==========
+  const paperSizeSelect = document.getElementById('fj-paper-size');
+  const rememberPaperSizeCheckbox = document.getElementById('fj-remember-paper-size');
+
+  // 读取保存的纸张尺寸和记忆状态
+  chrome.storage.sync.get(['rememberPaperSize', 'savedPaperSize'], (result) => {
+    if (result.rememberPaperSize && result.savedPaperSize && paperSizeSelect) {
+      paperSizeSelect.value = result.savedPaperSize;
+      // 触发 change 事件以应用尺寸
+      paperSizeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      showToast(`已恢复纸张尺寸: ${result.savedPaperSize}`, 1000);
+    }
+    if (rememberPaperSizeCheckbox) {
+      rememberPaperSizeCheckbox.checked = result.rememberPaperSize || false;
+    }
+  });
+
+  // 监听纸张尺寸变化
+  if (paperSizeSelect) {
+    paperSizeSelect.addEventListener('change', (e) => {
+      const selectedSize = e.target.value;
+      currentPaperSize = selectedSize;
+      showToast(`纸张大小已切换为 ${selectedSize}`, 1000);
+      
+      // 调整内容区域大小
+      const contentArea = document.getElementById('content-area');
+      if (contentArea) {
+        if (selectedSize === 'A5') {
+          contentArea.style.width = '148mm';
+          contentArea.style.height = '210mm';
+        } else if (selectedSize === 'A4') {
+          contentArea.style.width = '210mm';
+          contentArea.style.height = '297mm';
+        } else if (selectedSize === 'mobile') {
+          contentArea.style.width = '90mm';
+          contentArea.style.height = '150mm';
+        }
+      }
+      
+      // 如果勾选了"记住"，则保存设置
+      if (rememberPaperSizeCheckbox && rememberPaperSizeCheckbox.checked) {
+        chrome.storage.sync.set({ 
+          rememberPaperSize: true,
+          savedPaperSize: selectedSize
+        });
+      }
+      
+      // 重新渲染内容
+      const currentText = window.editedText || text;
+      renderVerticalContent(currentText);
+    });
+  }
+
+  // 监听"记住"复选框变化
+  if (rememberPaperSizeCheckbox) {
+    rememberPaperSizeCheckbox.addEventListener('change', (e) => {
+      if (!e.target.checked) {
+        // 取消记住时，清除保存的设置
+        chrome.storage.sync.set({ 
+          rememberPaperSize: false,
+          savedPaperSize: null
+        });
+      } else {
+        // 勾选时，立即保存当前选择的纸张尺寸
+        const currentSize = paperSizeSelect ? paperSizeSelect.value : 'A5';
+        chrome.storage.sync.set({ 
+          rememberPaperSize: true,
+          savedPaperSize: currentSize
+        });
+        showToast('已记住纸张尺寸', 1000);
+      }
+    });
+  }
+  // ========== 纸张尺寸记忆功能结束 ==========
 
   // 初始化渲染
   renderVerticalContent(text);

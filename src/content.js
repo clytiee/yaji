@@ -788,6 +788,20 @@ function getMaxColumnsPerPage(paperSize) {
 }
 
 function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
+  // ========== 智能缓存逻辑 ==========
+  // 检查是否与上次打开的内容相同
+  const contentSignature = `${selectedTitle}|${selectedSubtitle}`;
+  if (window.lastContentSignature === contentSignature) {
+    // 相同内容：保留 window.editedText（之前编辑过的正文）
+    console.log('[DEBUG] 相同内容，保留编辑缓存:', window.editedText?.substring(0, 50));
+  } else {
+    // 不同内容：清空编辑缓存
+    window.editedText = null;
+    window.lastContentSignature = contentSignature;
+    console.log('[DEBUG] 内容已改变，清空编辑缓存');
+  }
+  // ========== 智能缓存逻辑结束 ==========
+
   // 纸张大小变量
   let currentPaperSize = 'A5'; // 默认 A5
   let maxCharsPerColumn = 37; // A5 默认每列 37 字

@@ -766,7 +766,7 @@ function getMaxCharsPerColumn(paperSize, panelWidth) {
   } else if (paperSize === 'A4') {
     maxChars = 50;
   } else {
-    maxChars = 28;
+    maxChars = 29;
   }
   console.log("每列最大字数：", maxChars);
   return maxChars;
@@ -1532,16 +1532,12 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
       const allParagraphs = verticalContentDiv.querySelectorAll('.vertical-paragraph');
       let startIndex = 0;
       for (let i = 0; i < allParagraphs.length; i++) {
-        const style = allParagraphs[i].getAttribute('style') || '';
-        if (style.includes('font-weight: bold') || style.includes('margin-bottom: 20px')) {
+        if (allParagraphs[i].classList.contains('title') || 
+          allParagraphs[i].classList.contains('subtitle')) {
           startIndex = i + 1;
-          continue;
+        } else {
+          break;
         }
-        if (style.includes('font-size: 12pt')) {
-          startIndex = i + 1;
-          continue;
-        }
-        break;
       }
 
       for (let i = startIndex; i < allParagraphs.length; i++) {

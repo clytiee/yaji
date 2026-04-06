@@ -622,6 +622,10 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       background-repeat: no-repeat;
       background-position: center;
       padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 160mm;
     `;
     
     const contentClone = contentElement.cloneNode(true);
@@ -633,6 +637,32 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       margin: 0;
       z-index: 9999;
       border-radius: 16px;
+      min-width: 60mm;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    `;
+
+    const title = contentClone.querySelector('#title');
+    title.style.cssText += '; font-size: 1rem; font-weight: bold;';
+
+    const subtitle = contentClone.querySelector('#subtitle');
+    subtitle.style.cssText += '; font-size: 0.8rem;'
+
+    const cloneVerticalContent = contentClone.querySelector('.vertical-content');
+    cloneVerticalContent.style.cssText += '; min-height: 0;';
+
+    const sealStamp = document.createElement('div');
+    sealStamp.id = 'seal-stamp';
+    sealStamp.style.cssText = `
+      position: absolute;
+      bottom: 30px; left: 30px;
+      width: 32px; height: 32px;
+      opacity: 0.25;
+      z-index: 9999;
+      pointer-events: none;
+      background-image: url('${chrome.runtime.getURL('image/seal.png')}');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
     `;
 
     const originalContentArea = panelElement.querySelector('#content-area');
@@ -642,6 +672,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
     if (originalContentArea) originalContentArea.style.display = 'none';
     
     cloneContainer.appendChild(contentClone);
+    cloneContainer.appendChild(sealStamp);
     document.body.appendChild(cloneContainer);
     
     await new Promise(resolve => setTimeout(resolve, 200));
@@ -910,7 +941,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
         align-items: flex-start;
         gap: 10px 0;
         min-height: 540px;
-        padding-bottom: 10px 5px;
+        padding-bottom: 10px;
       }
       .vertical-content::-webkit-scrollbar { height: 6px; }
       .vertical-content::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 8px; }
@@ -1383,11 +1414,11 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
     
     let titleHtml = '';
     if (subtitleText && subtitleText.trim() !== '') {
-      titleHtml = `<div class="vertical-paragraph title">
-        ${escapeHtml(titleText)}&emsp;<span class="subtitle">${escapeHtml(subtitleText.trim())}</span>
+      titleHtml = `<div class="vertical-paragraph title" id="title">
+        ${escapeHtml(titleText)}&emsp;<span class="subtitle" id="subtitle">${escapeHtml(subtitleText.trim())}</span>
       </div>`;
     } else {
-      titleHtml = `<div class="vertical-paragraph subtitle">${escapeHtml(titleText)}</div>`;
+      titleHtml = `<div class="vertical-paragraph title" id="title">${escapeHtml(titleText)}</div>`;
     }
     
     //const paragraphs = sourceText.split(/\n+/);
@@ -1739,8 +1770,8 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
           contentArea.style.width = '210mm';
           contentArea.style.height = '297mm';
         } else if (selectedSize === 'mobile') {
-          contentArea.style.width = '90mm';
-          contentArea.style.height = '150mm';
+          contentArea.style.width = '70mm';
+          contentArea.style.height = '120mm';
         }
       }
       

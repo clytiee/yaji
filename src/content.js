@@ -256,7 +256,8 @@ async function printImage(panelElement, contentElement, titleValue) {
     let vContentPadding;
     let contentMargin;
     let titleFontStyle;
-    let subtitleFontStyle
+    let subtitleFontStyle;
+    let bgHeight;
 
     // 获取纸张大小和方向设置
     const paperSizeSelect = document.getElementById('fj-paper-size');
@@ -281,6 +282,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       titleFontStyle = 'font-size: 10pt; font-weight: bold;';
       subtitleFontStyle = 'font-size: 8pt;';
       panelWidth = '375';
+      bgHeight = '120mm;';
     } else {
       paperSize = orientation === 'portrait' ? 
         (paperSize === 'A5' ? 'A5 portrait' : 'A4 portrait') : 
@@ -292,16 +294,25 @@ async function printImage(panelElement, contentElement, titleValue) {
       epiFontSize = '10pt;';
       lineHeight = currentLineHeight;
       bodyPadding = '12px;';
-      contentPadding = '20px;';
+      contentPadding = '16px;';
       vContentPadding = '10px;';
       contentMargin = '20px;';
       titleFontStyle = 'font-size: 1rem; font-weight: bold;';
       subtitleFontStyle = 'font-size: 0.8rem;';
       panelWidth = panelElement.offsetWidth;
+      if (paperSize === 'A5 portrait') {
+        bgHeight = '200mm;';
+      } else if (paperSize === 'A5 landscape') {
+        bgHeight = '149mm';
+      } else if (paperSize === 'A4 portrait') {
+        bgHeight = '287mm;';
+      } else {
+        bgHeight = '200mm';
+      }
     }
     console.log("paperSize:", paperSize, "fontSize:", fontSize);
     
-    console.log("panelWidth:", panelWidth);
+    console.log("panelWidth:", panelWidth, "bgHeight:", bgHeight);
     //let bgImageUrl = chrome.runtime.getURL('image/01.jpeg');
 
     // 获取克隆的内容
@@ -336,21 +347,22 @@ async function printImage(panelElement, contentElement, titleValue) {
     body {
       //border: solid 1px blue;
       margin: 0;
-      padding: ${bodyPadding}
+      //padding: ${bodyPadding}
       background: white;
       font-family: '方正金陵', 'FZJinL-B_GBJF', '华文楷书', 'KaiTi', '宋体', serif;
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      height: 100%;
+      //height: 100%;
       ${backgroundStyle}
-      //background-size: 100% auto;  /* 宽度100%，高度自动（可能被裁剪） */
       //background-position: top center;  /* 顶部居中 */
-      background-size: cover;
+      //background-size: cover;
       background-position: center;
-      background-repeat: no-repeat;
+      background-repeat: repeat;
       background-attachment: fixed;
+      background-clip: border-box;
+      background-size: 100% ${bgHeight};  /* 宽度100%，高度自动（可能被裁剪） */
     }
     .seal-stamp {
       ${sealDisplay}
@@ -403,11 +415,12 @@ async function printImage(panelElement, contentElement, titleValue) {
     }
     .print-content {
       //border: solid 1px red;
-      width: ${panelWidth}px;
-      max-width: 100vw;
+      max-width: ${panelWidth}px;
+      width: 95%;
       background: rgba(255, 255, 255, ${bgOpacity});
       border-radius: 16px;
       padding: ${contentPadding}
+      padding-top: 0;
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
@@ -435,6 +448,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       display: inline-block;
       vertical-align: top;
       line-height: ${currentLineHeight};
+      padding-top: ${contentPadding}
     }
     .vertical-paragraph.epigraph { font-size: ${epiFontSize} !important; }
     .title { ${titleFontStyle} !important;}

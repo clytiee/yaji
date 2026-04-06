@@ -617,7 +617,6 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       width: ${contentElement.offsetWidth}px;
       z-index: 9999;
       font-family: '方正金陵', 'FZJinL-B_GBJF', '华文楷书', 'KaiTi', '宋体', serif;
-      ${bgStyle};
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
@@ -626,7 +625,9 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       justify-content: center;
       align-items: center;
       min-height: 160mm;
+      ${bgStyle}
     `;
+    //console.log("cloneContainer.style.cssText:",cloneContainer.style.cssText);
     
     const contentClone = contentElement.cloneNode(true);
     contentClone.id = 'clone-content-area';
@@ -832,7 +833,7 @@ function getMaxColumnsPerPage(paperSize) {
   return maxCols;
 }
 
-function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
+function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle = '') {
   // ========== 智能缓存逻辑 ==========
   // 检查是否与上次打开的内容相同
   const contentSignature = `${selectedTitle}|${selectedSubtitle}`;
@@ -1513,7 +1514,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
    * 清理正文中的括号及其内容
    */
   function cleanBracketsAndContent() {
-    let currentText = windowEditedText || text;
+    let currentText = windowEditedText || initialText;
     
     if (!currentText || currentText.trim() === '') {
       showToast('⚠️ 没有可清理的内容', 1500);
@@ -1612,10 +1613,10 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
       // 移除最后一个多余的换行
       editText = editText.replace(/\n$/, '');
     } else {
-      editText = windowEditedText || text;
+      editText = windowEditedText || initialText;
     }
 
-    if (!editText) editText = windowEditedText || text;
+    if (!editText) editText = windowEditedText || initialText;
     
     const textarea = document.createElement('textarea');
     textarea.value = editText;
@@ -1670,8 +1671,8 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
   panel.appendChild(contentArea);
     
   // 绑定事件
-  titleInput.addEventListener('input', () => renderVerticalContent(window.editedText || text));
-  subtitleInput.addEventListener('input', () => renderVerticalContent(window.editedText || text));
+  titleInput.addEventListener('input', () => renderVerticalContent(window.editedText || initialText));
+  subtitleInput.addEventListener('input', () => renderVerticalContent(window.editedText || initialText));
   contentArea.addEventListener('dblclick', (e) => { if (!e.target.closest('button')) enterEditMode(); });
   
   const portraitRadio = layoutToolbar.querySelector('input[value="portrait"]');
@@ -1784,7 +1785,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
       }
       
       // 重新渲染内容
-      const currentText = window.editedText || text;
+      const currentText = window.editedText || initialText;
       renderVerticalContent(currentText);
     });
   }
@@ -1812,7 +1813,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
   // ========== 纸张尺寸记忆功能结束 ==========
 
   // 初始化渲染
-  renderVerticalContent(text);
+  renderVerticalContent(initialText);
   
   // 绑定页面上的按钮事件
   setTimeout(() => {
@@ -1999,7 +2000,7 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
         }
         console.log("[DEBUG] 调整内容区域大小: ", contentArea.style.width, contentArea.style.height);
         // ✅ 关键：重新渲染内容，应用新的每列字数
-        const currentText = window.editedText || text;
+        const currentText = window.editedText || initialText;
         renderVerticalContent(currentText);
       });
     }
@@ -2019,7 +2020,8 @@ function showA5FloatingPanel(text, selectedTitle = '', selectedSubtitle = '') {
   
   // 监听复制文本事件
   document.getElementById('fj-copy-text')?.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(text); showToast('✅ 文本已复制', 1500); } 
+    const contentArea = document.getElementById('content-area');
+    try { await navigator.clipboard.writeText(contentArea.innerText || initialText); showToast('✅ 文本已复制', 1500); } 
     catch { showToast('❌ 复制失败', 1500); }
   });
 

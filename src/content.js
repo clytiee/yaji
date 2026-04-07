@@ -954,7 +954,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     border-radius: 8px;
     padding: 6px 12px;
     background: #f8fafc;
-    width: 260px;
+    width: 285px;
   `;
   
   subtitleInput.style.cssText = `
@@ -966,7 +966,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     padding: 6px 12px;
     background: #f8fafc;
     color: #64748b;
-    width: 170px;
+    width: 185px;
   `;
   
   titleContainer.appendChild(titleIcon);
@@ -1054,25 +1054,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     <button id="fj-lineheight-reset" style="padding:4px 12px; border:1px solid #cbd5e1; border-radius:6px; background:#f1f5f9; cursor:pointer;">重置</button>
 
   `;
-  
-  // 行距调整工具栏
-  /*
-  const lineHeightToolbar = document.createElement('div');
-  lineHeightToolbar.className = 'fj-lineheight-toolbar';
-  lineHeightToolbar.style.cssText = `
-    padding: 8px 20px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #fef3f2;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.8rem;
-    font-family: system-ui;
-  `;
-  lineHeightToolbar.innerHTML = `
-  `;
-  */
-  
+ 
   // 内容区域
   const contentArea = document.createElement('div');
   contentArea.id = 'content-area';
@@ -1528,6 +1510,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   // 编辑功能
   let isEditing = false;
   let originalContent = '';
+  let origianlContentWidth = '148mm';
   
   function enterEditMode() {
     if (isEditing) return;
@@ -1574,6 +1557,10 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
 
     if (!editText) editText = windowEditedText || initialText;
     
+    origianlContentWidth = contentArea.style.width;
+    contentArea.style.width = '148mm';
+    console.log("contentArea:", contentArea, "编辑前的内容宽度：", origianlContentWidth);
+
     const textarea = document.createElement('textarea');
     textarea.value = editText;
     textarea.style.cssText = `width:92%; min-height:270px; padding:12px; font-family:monospace; border:2px solid #3b82f6; border-radius:12px; resize:vertical;`;
@@ -1612,18 +1599,20 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     titleInput.disabled = false;
     subtitleInput.style.opacity = '1';
     titleInput.style.opacity = '1';
+
+    contentArea.style.width = origianlContentWidth;
   }
   
   function cancelEdit() {
     contentArea.innerHTML = originalContent;
     isEditing = false;
     showToast('📝 已取消编辑', 1200);
+    contentArea.style.width = origianlContentWidth;
   }
 
   panel.appendChild(toolbar);
   panel.appendChild(epigraphToolbar);
   panel.appendChild(layoutToolbar);
-  //panel.appendChild(lineHeightToolbar);
   panel.appendChild(contentArea);
     
   // 绑定事件
@@ -1950,8 +1939,8 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
             contentArea.style.width = '210mm';
             contentArea.style.height = '297mm';
           } else if (currentPaperSize === 'mobile') {
-            contentArea.style.width = '90mm';
-            contentArea.style.height = '150mm';
+            contentArea.style.width = '70mm';
+            contentArea.style.height = '120mm';
           }
         }
         console.log("[DEBUG] 调整内容区域大小: ", contentArea.style.width, contentArea.style.height);

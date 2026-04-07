@@ -554,38 +554,6 @@ async function printImage(panelElement, contentElement, titleValue) {
 //下载图片函数
 async function captureAndDownload(panelElement, contentElement, titleValue) {
   try {
-    const originalScrollX = window.scrollX;
-    const originalScrollY = window.scrollY;
-
-    // 保存并隐藏横向滚动条
-    const verticalContent = contentElement.querySelector('.vertical-content');
-    const originalOverflowX = verticalContent ? verticalContent.style.overflowX : '';
-    const originalOverflowY = verticalContent ? verticalContent.style.overflowY : '';
-    if (verticalContent) {
-      verticalContent.style.overflowX = 'hidden';
-      verticalContent.style.overflowY = 'hidden';
-    }
-
-    const originalCloseBtn = panelElement.querySelector('#fj-close-panel');
-    const originalFooter = panelElement.querySelector('.fj-footer');
-    const originalToolbar = panelElement.querySelector('.fj-title-toolbar');
-    const originalEpigraphToolbar = panelElement.querySelector('.fj-epigraph-toolbar');
-    const originalLayoutToolbar = panelElement.querySelector('.fj-layout-toolbar');
-    const originalLineHeightToolbar = panelElement.querySelector('.fj-lineheight-toolbar');
-    
-    const originalCloseDisplay = originalCloseBtn?.style.display;
-    const originalFooterDisplay = originalFooter?.style.display;
-    const originalToolbarDisplay = originalToolbar?.style.display;
-    const originalEpigraphDisplay = originalEpigraphToolbar?.style.display;
-    const originalLayoutDisplay = originalLayoutToolbar?.style.display;
-    const originalLineHeightDisplay = originalLineHeightToolbar?.style.display;
-    
-    if (originalCloseBtn) originalCloseBtn.style.display = 'none';
-    if (originalFooter) originalFooter.style.display = 'none';
-    if (originalToolbar) originalToolbar.style.display = 'none';
-    if (originalEpigraphToolbar) originalEpigraphToolbar.style.display = 'none';
-    if (originalLayoutToolbar) originalLayoutToolbar.style.display = 'none';
-    if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = 'none';
         
     console.log("下载图片，获取宽度：", contentElement.offsetWidth);
 
@@ -670,7 +638,6 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
     const originalContentAreaDisplay = originalContentArea?.style.display;
 
     if (panelElement) panelElement.style.display = 'none';
-    if (originalContentArea) originalContentArea.style.display = 'none';
     
     cloneContainer.appendChild(contentClone);
     cloneContainer.appendChild(sealStamp);
@@ -724,17 +691,6 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
         cloneContainer.remove();
 
         if (panelElement) panelElement.style.display = 'block';
-
-        if (originalCloseBtn) originalCloseBtn.style.display = originalCloseDisplay || '';
-        if (originalFooter) originalFooter.style.display = originalFooterDisplay || '';
-        if (originalToolbar) originalToolbar.style.display = originalToolbarDisplay || '';
-        if (originalEpigraphToolbar) originalEpigraphToolbar.style.display = originalEpigraphDisplay || '';
-        if (originalLayoutToolbar) originalLayoutToolbar.style.display = originalLayoutDisplay || '';
-        if (originalLineHeightToolbar) originalLineHeightToolbar.style.display = originalLineHeightDisplay || '';
-                
-        if (originalContentArea) originalContentArea.style.display = originalContentAreaDisplay || '';
-
-        window.scrollTo(originalScrollX, originalScrollY);
         
         const tempToast = document.createElement('div');
         tempToast.textContent = '✅ 图片已保存';
@@ -1247,7 +1203,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     // 按 50 字重新拆分
     let maxCharsEpigraph;
     if (paperSize == 'mobile') {
-      maxCharsEpigraph = 20;
+      maxCharsEpigraph = 40;
     } else {
       maxCharsEpigraph = 50;
     }

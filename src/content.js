@@ -588,7 +588,8 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: ${contentElement.offsetWidth}px;
+      //width: ${contentElement.offsetWidth}px;
+      min-width: 80mm;
       z-index: 9999;
       font-family: '方正金陵', 'FZJinL-B_GBJF', '华文楷书', 'KaiTi', '宋体', serif;
       background-size: cover;
@@ -598,7 +599,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 150mm;
+      min-height: 140mm;
       ${bgStyle}
     `;
     //console.log("cloneContainer.style.cssText:",cloneContainer.style.cssText);
@@ -623,7 +624,13 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
     subtitle.style.cssText += '; font-size: 0.8rem;'
 
     const cloneVerticalContent = contentClone.querySelector('.vertical-content');
-    cloneVerticalContent.style.cssText += '; min-height: 0; height: 131mm; line-height: 1.5; padding-bottom: 0;';
+    cloneVerticalContent.style.cssText += `; 
+      min-height: 0; 
+      max-height: 120mm; 
+      line-height: 1.5; 
+      padding-bottom: 0;
+      column-gap: 0.5em;
+    `;
 
     const sealStamp = document.createElement('div');
     sealStamp.id = 'seal-stamp';
@@ -888,8 +895,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
       .vertical-paragraph {
         writing-mode: vertical-rl;
         text-orientation: upright;
-        font-size: 14pt;
-        margin: 0 5px;
+        font-size: 1rem;
         display: inline-block;
         vertical-align: top;
         transition: line-height 0.1s ease;
@@ -1148,7 +1154,6 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
       return;
     }
     
-    /*
     for (let i = startIndex; i <= endIndex; i++) {
       if (allParagraphs[i]) {
         allParagraphs[i].classList.add('epigraph');
@@ -1159,108 +1164,6 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     const finalCount = verticalContentDiv.querySelectorAll('.vertical-paragraph.epigraph').length;
     console.log(`[DEBUG] 最终添加了 ${finalCount} 个 epigraph`);
     //showToast(`📜 已应用题记：从右起第 ${startCol} 至 ${endCol} 列`, 1500);
-    */
-    
-    // 题记列每列字数上限改为50，有可能列数减少
-    // 保存原始文字（如果没有保存过）
-    for (let i = 0; i < allParagraphs.length; i++) {
-      if (!allParagraphs[i].originalText) {
-        allParagraphs[i].originalText = allParagraphs[i].innerText || allParagraphs[i].textContent;
-      }
-    }
-    
-    // 收集题记范围内的文字
-    let epigraphText = '';
-    let oldEpigraphCount = 0;
-    startIndex = startCol - 1;
-    endIndex = endCol - 1;
-    const columnsToReplace = [];
-    
-    for (let i = startIndex; i <= endIndex; i++) {
-      epigraphText += allParagraphs[i].originalText;
-      columnsToReplace.push(allParagraphs[i]);
-    }
-    
-    oldEpigraphCount = columnsToReplace.length;
-    console.log(`[DEBUG] 题记范围共 ${columnsToReplace.length} 列，合并后 ${epigraphText.length} 字`);
-    
-    // 获取纸张大小和方向设置
-    const paperSizeSelect = document.getElementById('fj-paper-size');
-    const paperSize = paperSizeSelect ? paperSizeSelect.value : 'A5';
-
-    // 按 50 字重新拆分
-    let maxCharsEpigraph;
-    if (paperSize == 'mobile') {
-      maxCharsEpigraph = 40;
-    } else {
-      maxCharsEpigraph = 50;
-    }
-    const chars = epigraphText.split('');
-    const newColumnCount = Math.ceil(chars.length / maxCharsEpigraph);
-    
-    if (oldEpigraphCount > 1) {
-        console.log(`[DEBUG] 重新拆分为 ${newColumnCount} 列（ ${maxCharsEpigraph}字/列）`);
-        
-        // 创建新列
-        const newColumns = [];
-        for (let i = 0; i < chars.length; i += maxCharsEpigraph) {
-          const columnChars = chars.slice(i, i + maxCharsEpigraph);
-          const newDiv = document.createElement('div');
-          newDiv.className = 'vertical-paragraph epigraph';
-          newDiv.innerText = columnChars.join('');
-          newDiv.originalText = columnChars.join('');
-          newDiv.style.lineHeight = currentLineHeight;
-          newColumns.push(newDiv);
-        }
-        
-        // 替换原有的列
-        const parent = verticalContentDiv;
-        const firstCol = columnsToReplace[0];
-        const lastCol = columnsToReplace[columnsToReplace.length - 1];
-        
-        // 创建文档片段
-        const fragment = document.createDocumentFragment();
-        newColumns.forEach(col => fragment.appendChild(col));
-        
-        // 找到插入位置
-        if (firstCol.parentNode === parent) {
-          // 替换：先移除旧列，再插入新列
-          let currentNode = firstCol;
-          const nodesToRemove = [];
-          while (currentNode && currentNode !== lastCol.nextSibling) {
-            nodesToRemove.push(currentNode);
-            currentNode = currentNode.nextSibling;
-          }
-          
-          // 在第一个旧列的位置插入新列
-          if (firstCol.previousSibling) {
-            parent.insertBefore(fragment, firstCol);
-          } else {
-            parent.insertBefore(fragment, firstCol);
-          }
-          
-          // 移除旧列
-          nodesToRemove.forEach(node => node.remove());
-        }
-        
-        // 更新后续列的索引（如果需要）
-        const finalEpigraphCount = parent.querySelectorAll('.vertical-paragraph.epigraph').length;
-        console.log(`[DEBUG] 题记列数量变化: ${columnsToReplace.length} 列 → ${newColumns.length} 列`);
-        
-        showToast(`📜 已应用题记：第 ${startCol}-${endCol} 列合并为 ${newColumns.length} 列（50字/列）`, 2000);
-      } else {
-          console.log(`[DEBUG] 题记1列，无需合并`);
-             for (let i = startIndex; i <= endIndex; i++) {
-              if (allParagraphs[i]) {
-                allParagraphs[i].classList.add('epigraph');
-                console.log(`[DEBUG] ✅ 段落 ${i} 已添加 epigraph 类`);
-              }
-            }
-            
-            const finalCount = verticalContentDiv.querySelectorAll('.vertical-paragraph.epigraph').length;
-            console.log(`[DEBUG] 最终添加了 ${finalCount} 个 epigraph`);
-            //showToast(`📜 已应用题记：从右起第 ${startCol} 至 ${endCol} 列`, 1500);
-     }
   }
   
   function updateEpigraphFormat() {

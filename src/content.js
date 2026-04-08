@@ -368,7 +368,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       background-repeat: repeat;
       background-attachment: fixed;
       background-clip: border-box;
-      background-size: 100% ${bgHeight};  /* 宽度100%，高度自动（可能被裁剪） */
+      background-size: 100%;  /* 宽度100%，高度自动（可能被裁剪） */
     }
     .seal-stamp {
       ${sealDisplay}

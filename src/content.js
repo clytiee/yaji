@@ -1658,7 +1658,8 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   footer.innerHTML = `
     <span>✍️ 方正金陵 · 竖排版</span>
     <div style="display: flex; gap: 8px; align-items: center;">
-      <button id="fj-copy-text" style="background:#f1f5f9; border:none; padding:6px 14px; border-radius:20px; cursor:pointer;" title="复制文本">📋</button>
+      <button id="fj-copy-original" style="background:#f1f5f9; border:none; padding:6px 14px; border-radius:20px; cursor:pointer;" title="复制原文本">📄</button>
+      <button id="fj-copy-text" style="background:#f1f5f9; border:none; padding:6px 14px; border-radius:20px; cursor:pointer;" title="复制编辑后文本">📋</button>
       <input type="checkbox" id="fj-auto-close" style="width:10px; cursor: point; margin: 0;"></input><label title="打印/下载后自动关闭">自动关闭</label>
       <button id="fj-print-image" style="background:#2c3e66; border:none; padding:6px 14px; border-radius:20px; cursor:pointer; color:white; width: 98px;" title="默认为A5尺寸，无页眉页脚">🖨️ 打印</button>
       <button id="fj-download-image" style="background:#2c3e66; border:none; padding:6px 14px; border-radius:20px; cursor:pointer; color:white;">📸 下载图片</button>
@@ -1963,6 +1964,13 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   panel.addEventListener('wheel', (e) => e.stopPropagation());
   
+  // 监听复制原文本事件
+  document.getElementById('fj-copy-original')?.addEventListener('click', async () => {
+    const titleValue = titleInput.value + ' ' + subtitleInput.value;
+    try { await navigator.clipboard.writeText(titleValue + '\n' + initialText); showToast('✅ 文本已复制', 1500); } 
+    catch { showToast('❌ 复制失败', 1500); }
+  });
+
   // 监听复制文本事件
   document.getElementById('fj-copy-text')?.addEventListener('click', async () => {
     const contentArea = document.getElementById('content-area');

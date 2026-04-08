@@ -8,9 +8,8 @@ let savedSelectedText = '';
 let savedSubtitleText = '';
 let currentHighlightedElement = null;
 
-let currentLineHeight = 2.0;
+let currentLineHeight = 1.5;
 
-let currentColumnCount = 0;
 let horiAlign = 'center';
 
 // ========== 1. 内嵌 html2canvas 精简版 ==========
@@ -193,6 +192,8 @@ function extractTextFromDiv(divElement) {
   text = text.replace(/[ \t]+/g, '');
 
   text = text.trim();
+
+  //console.log("提取到的text:", text);
   
   return text;
 }
@@ -277,6 +278,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       epiFontSize = '8pt;';
       bodyPadding = '8px;';
       contentPadding = '10px;';
+      vContentHeight = '100mm;';
       vContentPadding = '5px;';
       contentMargin = '8px;';
       titleFontStyle = 'font-size: 10pt; font-weight: bold;';
@@ -301,12 +303,16 @@ async function printImage(panelElement, contentElement, titleValue) {
       subtitleFontStyle = 'font-size: 0.8rem;';
       panelWidth = panelElement.offsetWidth;
       if (paperSize === 'A5 portrait') {
+        vContentHeight = '180mm;';
         bgHeight = '200mm;';
       } else if (paperSize === 'A5 landscape') {
+        vContentHeight = '129mm;';
         bgHeight = '149mm';
       } else if (paperSize === 'A4 portrait') {
+        vContentHeight = '267mm;';
         bgHeight = '287mm;';
       } else {
+        vContentHeight = '180mm;';
         bgHeight = '200mm';
       }
     }
@@ -438,7 +444,9 @@ async function printImage(panelElement, contentElement, titleValue) {
       align-items: flex-start;
       gap: 10px 0;
       min-height: auto;
-      padding: ${vContentPadding}
+      height: ${vContentHeight};
+      line-height: ${currentLineHeight};
+      padding: ${vContentPadding};
     }
     .vertical-paragraph {
       writing-mode: vertical-rl;
@@ -447,8 +455,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       margin: 0 0 0 7px;
       display: inline-block;
       vertical-align: top;
-      line-height: ${currentLineHeight};
-      padding-top: ${contentPadding}
+      padding-top: ${contentPadding};
     }
     .vertical-paragraph.epigraph { font-size: ${epiFontSize} !important; }
     .title { ${titleFontStyle} !important;}
@@ -457,7 +464,6 @@ async function printImage(panelElement, contentElement, titleValue) {
     @media print {
       body, .vertical-paragraph {
         font-size: ${fontSize};
-        line-height: ${lineHeight};
       }
       .vertical-content { justify-content: ${horiAlign}; }
       .opacity-controls { display: none !important; }
@@ -592,7 +598,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 160mm;
+      min-height: 150mm;
       ${bgStyle}
     `;
     //console.log("cloneContainer.style.cssText:",cloneContainer.style.cssText);
@@ -617,7 +623,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
     subtitle.style.cssText += '; font-size: 0.8rem;'
 
     const cloneVerticalContent = contentClone.querySelector('.vertical-content');
-    cloneVerticalContent.style.cssText += '; min-height: 0;';
+    cloneVerticalContent.style.cssText += '; min-height: 0; height: 131mm; line-height: 1.5; padding-bottom: 0;';
 
     const sealStamp = document.createElement('div');
     sealStamp.id = 'seal-stamp';
@@ -1387,10 +1393,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
           contentHtml += `<div class="vertical-paragraph"></div>`;
       }else {
           columnCount = Math.ceil(chars.length / maxChars);
-          for (let i = 0; i < chars.length; i += maxChars) {
-            columnChars = chars.slice(i, i + maxChars);
-            contentHtml += `<div class="vertical-paragraph">${escapeHtml(columnChars.join(''))}</div>`;
-          }
+          contentHtml += `<div class="vertical-paragraph">${escapeHtml(chars.join(''))}</div>`;
       }
       totalColumns += columnCount;
     }
@@ -1403,6 +1406,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     //console.log('[DEBUG] DOM 已更新, innerHTML 长度:', contentArea.innerHTML.length);
     
     // 应用当前行距
+    /*
     let allParagraphs = contentArea.querySelectorAll('.vertical-paragraph');
     console.log('[DEBUG] 找到 .vertical-paragraph 数量:', allParagraphs.length);
     allParagraphs.forEach(para => {
@@ -1433,6 +1437,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     });
     
     currentLineHeight = targetLineHeight;
+    */
 
     const valSpan = document.getElementById('fj-lineheight-val');
     if (valSpan) valSpan.textContent = currentLineHeight.toFixed(1);

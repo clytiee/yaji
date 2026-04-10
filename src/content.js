@@ -917,7 +917,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
         justify-content: center;
         align-items: flex-start;
         gap: 10px 0;
-        min-height: 540px;
+        height: 120mm;
         padding-bottom: 10px;
       }
       .vertical-content::-webkit-scrollbar { height: 6px; }

@@ -629,14 +629,14 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
       max-height: 120mm; 
       line-height: 1.5; 
       padding-bottom: 0;
-      column-gap: 0.5em;
+      //column-gap: 0.5em;
     `;
 
     const sealStamp = document.createElement('div');
     sealStamp.id = 'seal-stamp';
     sealStamp.style.cssText = `
       position: absolute;
-      bottom: 30px; left: 30px;
+      bottom: 45px; left: 45px;
       width: 32px; height: 32px;
       opacity: 0.25;
       z-index: 9999;
@@ -895,12 +895,12 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
       .vertical-paragraph {
         writing-mode: vertical-rl;
         text-orientation: upright;
-        font-size: 1rem;
+        font-size: 1.1rem;
         display: inline-block;
         vertical-align: top;
         transition: line-height 0.1s ease;
       }
-      .vertical-paragraph.epigraph { font-size: 10pt !important; }
+      .vertical-paragraph.epigraph { font-size: 0.7rem !important; }
       .vertical-paragraph.compact { margin: 0 0; }
       
       .vertical-content {
@@ -1566,6 +1566,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   footer.innerHTML = `
     <span>✍️ 方正金陵 · 竖排版</span>
     <div style="display: flex; gap: 8px; align-items: center;">
+      <input type="checkbox" id="fj-with-tag" style="width:10px; cursor: point; margin: 0;"></input><label title="复制时末尾带#标签">带标签</label>
       <button id="fj-copy-original" style="background:#f1f5f9; border:none; padding:6px 14px; border-radius:20px; cursor:pointer;" title="复制原文本">📄</button>
       <button id="fj-copy-text" style="background:#f1f5f9; border:none; padding:6px 14px; border-radius:20px; cursor:pointer;" title="复制编辑后文本">📋</button>
       <input type="checkbox" id="fj-auto-close" style="width:10px; cursor: point; margin: 0;"></input><label title="打印/下载后自动关闭">自动关闭</label>
@@ -1586,10 +1587,23 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     }
   });
 
+  //读取保存的复制带标签设置
+  let withTagCheckbox = document.getElementById('fj-with-tag');
+  chrome.storage.sync.get(['copyWithTag'], (result) => {
+    if (withTagCheckbox) {
+      withTagCheckbox.checked = result.copyWithTag || false;
+    }
+  });
+
   // 保存自动关闭设置
   autoCloseCheckbox.addEventListener('change', (e) => {
     chrome.storage.sync.set({ autoCloseAfterAction: e.target.checked });
   });
+
+  // 保存复制带标签设置
+  withTagCheckbox.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ copyWithTag: e.target.checked });
+  });  
 
   // ========== 纸张尺寸记忆功能 ==========
   const paperSizeSelect = document.getElementById('fj-paper-size');
@@ -1875,7 +1889,12 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   // 监听复制原文本事件
   document.getElementById('fj-copy-original')?.addEventListener('click', async () => {
     const titleValue = titleInput.value + ' ' + subtitleInput.value;
-    try { await navigator.clipboard.writeText(titleValue + '\n' + initialText); showToast('✅ 文本已复制', 1500); } 
+    let copyText = titleValue + '\n' + initialText;
+    const withTagCheckbox = document.getElementById('fj-with-tag');
+    if (withTagCheckbox.checked) {
+      copyText += "\n#诗词 #国学 #古风 #国风 #中国文化";
+    }
+    try { await navigator.clipboard.writeText(copyText); showToast('✅ 文本已复制', 1500); } 
     catch { showToast('❌ 复制失败', 1500); }
   });
 
@@ -1891,10 +1910,13 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     const titleValue = titleInput.value + ' ' + subtitleInput.value;
   
     // 在打印前获取并保存自动关闭状态
-    const checkbox = document.getElementById('fj-auto-close');
+    let checkbox = document.getElementById('fj-auto-close');
     const shouldAutoClose = checkbox ? checkbox.checked : false;
+
+    checkbox = document.getElementById('fj-with-tag');
+    const shouldWithTag = checkbox ? checkbox.checked : false;
     
-    console.log('[DEBUG] 打印 - 重新获取的 checkbox 状态:', shouldAutoClose);
+    console.log('[DEBUG] 打印 - 重新获取的 checkbox 状态:', shouldAutoClose, shouldWithTag);
 
     await printImage(panel, contentArea, titleValue);
 

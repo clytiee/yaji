@@ -562,6 +562,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
   try {
         
     console.log("下载图片，获取宽度：", contentElement.offsetWidth);
+    console.log("标题：", titleValue);
 
     let bgImage;
     let bgImageUrl;
@@ -621,7 +622,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
     title.style.cssText += '; font-size: 1rem; font-weight: bold;';
 
     const subtitle = contentClone.querySelector('#subtitle');
-    subtitle.style.cssText += '; font-size: 0.8rem;'
+    if (subtitle) subtitle.style.cssText += '; font-size: 0.8rem;';
 
     const cloneVerticalContent = contentClone.querySelector('.vertical-content');
     cloneVerticalContent.style.cssText += `; 
@@ -704,6 +705,13 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
         cloneContainer.remove();
 
         if (panelElement) panelElement.style.display = 'block';
+
+        //勾选时自动复制原文本
+        const autoCopyCheckbox = document.getElementById('fj-auto-copy');
+        if (autoCopyCheckbox.checked) {
+          const copyOriginalTextBtn = document.getElementById('fj-copy-original');
+          copyOriginalTextBtn.click();
+        }
         
         const tempToast = document.createElement('div');
         tempToast.textContent = '✅ 图片已保存';
@@ -1566,10 +1574,11 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   footer.innerHTML = `
     <span>✍️ 方正金陵 · 竖排版</span>
     <div style="display: flex; gap: 8px; align-items: center;">
-      <input type="checkbox" id="fj-with-tag" style="width:10px; cursor: point; margin: 0;"></input><label title="复制时末尾带#标签">带标签</label>
-      <button id="fj-copy-original" style="background:#f1f5f9; border:none; padding:6px 14px; border-radius:20px; cursor:pointer;" title="复制原文本">📄</button>
+      <input type="checkbox" id="fj-with-tag" style="width:10px; cursor: point; margin: 0;"></input><label title="复制时末尾带#标签">签</label>
+      <input type="checkbox" id="fj-auto-copy" style="width:10px; cursor: point; margin: 0;"></input><label title="下载图片自动复制原文本">复</label>
+      <button id="fj-copy-original" style="background:#f1f5f9; border:none; padding:6px 10px; border-radius:20px; cursor:pointer;" title="复制原文本">📄</button>
       <button id="fj-copy-text" style="background:#f1f5f9; border:none; padding:6px 14px; border-radius:20px; cursor:pointer;" title="复制编辑后文本">📋</button>
-      <input type="checkbox" id="fj-auto-close" style="width:10px; cursor: point; margin: 0;"></input><label title="打印/下载后自动关闭">自动关闭</label>
+      <input type="checkbox" id="fj-auto-close" style="width:10px; cursor: point; margin: 0;"></input><label title="打印/下载后自动关闭">关</label>
       <button id="fj-print-image" style="background:#2c3e66; border:none; padding:6px 14px; border-radius:20px; cursor:pointer; color:white; width: 98px;" title="默认为A5尺寸，无页眉页脚">🖨️ 打印</button>
       <button id="fj-download-image" style="background:#2c3e66; border:none; padding:6px 14px; border-radius:20px; cursor:pointer; color:white;">📸 下载图片</button>
     </div>
@@ -1595,6 +1604,14 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     }
   });
 
+  //读取保存的自动复制设置
+  let autoCopyCheckbox = document.getElementById('fj-auto-copy');
+  chrome.storage.sync.get(['autoCopy'], (result) => {
+    if (autoCopyCheckbox) {
+      autoCopyCheckbox.checked = result.autoCopy || false;
+    }
+  });
+
   // 保存自动关闭设置
   autoCloseCheckbox.addEventListener('change', (e) => {
     chrome.storage.sync.set({ autoCloseAfterAction: e.target.checked });
@@ -1603,6 +1620,11 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   // 保存复制带标签设置
   withTagCheckbox.addEventListener('change', (e) => {
     chrome.storage.sync.set({ copyWithTag: e.target.checked });
+  });  
+
+  // 保存自动复制设置
+  autoCopyCheckbox.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ autoCopy: e.target.checked });
   });  
 
   // ========== 纸张尺寸记忆功能 ==========

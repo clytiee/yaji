@@ -627,7 +627,8 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
     const cloneVerticalContent = contentClone.querySelector('.vertical-content');
     cloneVerticalContent.style.cssText += `; 
       min-height: 0; 
-      max-height: 120mm; 
+      max-height: 120mm;
+      height: auto;
       line-height: 1.5; 
       padding-bottom: 0;
       //column-gap: 0.5em;

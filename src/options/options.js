@@ -1,6 +1,6 @@
 // 生成 01-13 的默认背景图列表
 const defaultBgImages = [];
-for (let i = 1; i <= 28; i++) {
+for (let i = 1; i <= 100; i++) {
   const num = i.toString().padStart(2, '0');
   defaultBgImages.push({
     name: num,
@@ -13,14 +13,33 @@ let currentBgImage = '';
 let currentOpacity = 0.7;
 let customImages = [];
 let previewHeight = 60; // 百分比
+// 透明度跟随背景图变量
+let opacityMemoryEnabled = false; // 是否开启记忆功能
+let opacityMemoryMap = {}; // 存储每个背景图的透明度 {path: opacity}
 
 // 加载保存的设置
 function loadSettings() {
-  chrome.storage.sync.get(['bgImage', 'bgOpacity', 'previewHeight'], (result) => {
+  chrome.storage.sync.get(['bgImage', 'bgOpacity', 'previewHeight', 'opacityMemoryEnabled', 'opacityMemoryMap'], (result) => {
     currentBgImage = result.bgImage || defaultBgImages[0].path;
     currentOpacity = result.bgOpacity || 0.7;
     previewHeight = result.previewHeight || 60;
+    // 加载透明度跟随背景图设置
+    opacityMemoryEnabled = result.opacityMemoryEnabled || false;
+    opacityMemoryMap = result.opacityMemoryMap || {};
     
+    // 设置复选框状态
+    const memoryToggle = document.getElementById('opacity-memory-toggle');
+    if (memoryToggle) {
+      memoryToggle.checked = opacityMemoryEnabled;
+      // 绑定复选框事件
+      memoryToggle.addEventListener('change', toggleOpacityMemory);
+    }
+
+    // 如果开启跟随且当前背景图有保存的透明度，优先使用
+    if (opacityMemoryEnabled && opacityMemoryMap[currentBgImage]) {
+      currentOpacity = opacityMemoryMap[currentBgImage];
+    }
+
     document.getElementById('opacity-slider').value = currentOpacity;
     document.getElementById('opacity-value').textContent = Math.round(currentOpacity * 100) + '%';
     
@@ -41,17 +60,62 @@ function loadSettings() {
   });
 }
 
+// 新增：切换透明度跟随背景图功能
+function toggleOpacityMemory(e) {
+  opacityMemoryEnabled = e.target.checked;
+  // 保存开关状态
+  chrome.storage.sync.set({ 
+    opacityMemoryEnabled: opacityMemoryEnabled 
+  }, () => {
+    const statusText = opacityMemoryEnabled ? '✅ 已开启按背景图记忆透明度' : '❌ 已关闭按背景图记忆透明度';
+    showStatus(statusText);
+    
+    // 如果开启，立即保存当前背景图的透明度
+    if (opacityMemoryEnabled) {
+      saveOpacityToMemory(currentBgImage, currentOpacity);
+    }
+  });
+}
+
+// 新增：保存透明度到记忆映射表
+function saveOpacityToMemory(imagePath, opacity) {
+  if (!opacityMemoryEnabled) return;
+  
+  opacityMemoryMap[imagePath] = opacity;
+  // 保存到存储
+  chrome.storage.sync.set({ 
+    opacityMemoryMap: opacityMemoryMap 
+  }, () => {
+    console.log(`已保存 ${imagePath} 的透明度: ${opacity}`);
+  });
+}
+
+// 判断图片是否存在函数
+async function checkExtensionFileExists(url) {
+  try {
+    const response = await fetch(url, { method: 'HEAD' }); // 只拿头，不下载图片
+    return response.ok; // 200 就是存在，404 就是不存在
+  } catch (err) {
+    return false;
+  }
+}
+
 // 渲染背景图列表
-function renderBgList() {
+async function renderBgList() {
   console.log('渲染背景图列表，自定义图片数量:', customImages.length);
   const grid = document.getElementById('bg-grid');
   
   let html = '';
+  let i = 0;
   
   // 渲染默认图片
-  for (let i = 0; i < defaultBgImages.length; i++) {
+  for (i = 0; i < defaultBgImages.length; i++) {
     const img = defaultBgImages[i];
     const selected = currentBgImage === img.path ? 'selected' : '';
+    const exists = await checkExtensionFileExists(chrome.runtime.getURL(img.path));
+    console.log("exists", exists);
+    if (!exists) continue; // 跳过不存在的图片
+      
     html += `
       <div class="bg-card ${selected}" data-path="${img.path}">
         <div class="bg-preview" style="background-image: url('${chrome.runtime.getURL(img.path)}')"></div>
@@ -151,6 +215,14 @@ function selectBackground(path) {
       card.classList.remove('selected');
     }
   });
+
+  // 如果开启跟随且该背景图有保存的透明度，切换到该透明度
+  if (opacityMemoryEnabled && opacityMemoryMap[path]) {
+    currentOpacity = opacityMemoryMap[path];
+    // 更新滑块和显示值
+    document.getElementById('opacity-slider').value = currentOpacity;
+    document.getElementById('opacity-value').textContent = Math.round(currentOpacity * 100) + '%';
+  }
 
   // 查找图片的 dataUrl
   const allImages = [...defaultBgImages, ...customImages];
@@ -317,6 +389,10 @@ function setupOpacity() {
     valueSpan.textContent = Math.round(currentOpacity * 100) + '%';
     updatePreview();
     chrome.storage.sync.set({ bgOpacity: currentOpacity });
+    // 如果开启跟随，同步保存到当前背景图的透明度记录
+    if (opacityMemoryEnabled) {
+      saveOpacityToMemory(currentBgImage, currentOpacity);
+    }
     showStatus('💾 透明度已保存');
   });
 }

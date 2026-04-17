@@ -185,7 +185,23 @@
       font-weight: 500;
       color: #2c3e66;
     }
+
+    /* 透明度跟随背景图复选框 */
+    .opacity-memory {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: 10px;
+      font-size: 0.85rem;
+      color: #334155;
+    }
     
+    .opacity-memory input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
     /* 预览区域 - 可调节高度 */
     .preview-area {
       margin-top: 24px;
@@ -365,9 +381,14 @@
           <label>透明度:</label>
           <input type="range" id="opacity-slider" min="0.01" max="1" step="0.01">
           <span class="opacity-value" id="opacity-value">70%</span>
+          <!--透明度跟随背景设置 -->
+          <div class="opacity-memory">
+            <input type="checkbox" id="opacity-memory-toggle">
+            <label for="opacity-memory-toggle">透明度跟随背景图</label>
+          </div>
         </div>
       </div>
-      
+
       <!-- 实时预览 - 可调节高度 -->
       <div class="section">
         <!--<h2>📄 实时预览</h2>-->

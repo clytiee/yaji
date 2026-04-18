@@ -12,6 +12,7 @@ let currentLineHeight = 1.5;
 
 let horiAlign = 'center';
 
+let randomBg = '';
 
 // 创建高亮样式
 const styleId = 'gufeng-highlight-style';
@@ -190,17 +191,17 @@ async function printImage(panelElement, contentElement, titleValue) {
           console.log('使用自定义背景图 (从 local 读取)');
         } else {
           // 找不到则回退到默认
-          bgImageUrl = chrome.runtime.getURL('image/01.jpeg');
+          bgImageUrl = chrome.runtime.getURL('image/01.jpg');
           console.log('自定义图片不存在，回退到默认');
         }
       } else {
         // 默认图片：使用扩展内路径
-        const bgImage = syncResult.bgImage || 'image/01.jpeg';
+        const bgImage = syncResult.bgImage || 'image/01.jpg';
         bgImageUrl = chrome.runtime.getURL(bgImage);
         console.log('使用默认背景图:', bgImageUrl);
       }
 
-      savedBgImage = syncResult.bgImage || 'image/01.jpeg';
+      savedBgImage = syncResult.bgImage || 'image/01.jpg';
       savedBgOpacity = syncResult.bgOpacity || 0.7;
 
       console.log('读取保存的设置:', savedBgImage, savedBgOpacity);
@@ -281,14 +282,14 @@ async function printImage(panelElement, contentElement, titleValue) {
     console.log("paperSize:", paperSize, "fontSize:", fontSize);
     
     console.log("panelWidth:", panelWidth, "bgHeight:", bgHeight);
-    //let bgImageUrl = chrome.runtime.getURL('image/01.jpeg');
+    //let bgImageUrl = chrome.runtime.getURL('image/01.jpg');
 
     // 获取克隆的内容
     const contentClone = contentElement.cloneNode(true);
     
     if (!plainMode) {
       //bgImageUrl = chrome.runtime.getURL(savedBgImage);  // 用保存的背景图
-      bgImageUrl = syncResult.bgImageDataUrl || chrome.runtime.getURL(syncResult.bgImage || 'image/01.jpeg');
+      bgImageUrl = syncResult.bgImageDataUrl || chrome.runtime.getURL(syncResult.bgImage || 'image/01.jpg');
       bgOpacity = savedBgOpacity;  // 用保存的透明度
       console.log("保存的背景图透明度：", savedBgOpacity);
     } else {
@@ -526,6 +527,18 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
     console.log(isPreview ? "预览图片" : "下载图片", "获取宽度：", contentElement.offsetWidth);
     console.log("标题：", titleValue);
 
+    // 删除前复制层
+    const previousClone = document.getElementById('fj-clone-container');
+    if (previousClone) {
+      previousClone.remove();
+      //console.log("删除前复制层");
+    }
+    const previousPreview = document.getElementById('fj-image-preview-container');
+    if (previousPreview) {
+      previousPreview.style.cssText += 'display:none;';
+      //console.log("隐藏前图片层");
+    }
+
     let bgImage;
     let bgImageUrl;
     const syncResult = await chrome.storage.sync.get(['bgImage', 'bgOpacity', 'bgImageIsCustom', 'plainMode']);
@@ -535,14 +548,20 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
       bgImageUrl = '';
       console.log("无背景图模式");
     } else {
-      bgImage = syncResult.bgImage || 'image/01.jpeg';
+      bgImage = syncResult.bgImage || 'image/01.jpg';
+      // 如果有随机背景图，使用它
+      if (randomBg) {
+        bgImage = randomBg;
+        console.log('使用随机背景图');
+      }
       bgImageUrl = chrome.runtime.getURL(bgImage);
-      console.log('使用自带背景图:', bgImageUrl);
+      //console.log('使用自带背景图:', bgImageUrl);
     }
     const bgOpacity = syncResult.bgOpacity || 0.7;
     console.log('读取背景图设置:', bgImage, bgOpacity, bgImageUrl);
 
     const bgStyle = plainMode === true ? 'background-color: white;' : `background-image: url('${bgImageUrl}');'`;
+    //console.log('bgStyle:', bgStyle);
 
     const cloneContainer = document.createElement('div');
     cloneContainer.id = 'fj-clone-container';
@@ -646,9 +665,9 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
         
         ctx.scale(devicePixelRatio, devicePixelRatio);
 
-        console.log("scaleX:", scaleX, "scaleY:", scaleY, "devicePixelRatio:", devicePixelRatio);
-        console.log("canvas:", canvas);
-        console.log("rect:", rect);
+        //console.log("scaleX:", scaleX, "scaleY:", scaleY, "devicePixelRatio:", devicePixelRatio);
+        //console.log("canvas:", canvas);
+        //console.log("rect:", rect);
         
         ctx.drawImage(
           img,
@@ -795,7 +814,7 @@ function getMaxCharsPerColumn(paperSize, panelWidth) {
   } else {
     maxChars = 29;
   }
-  console.log("每列最大字数：", maxChars);
+  //console.log("每列最大字数：", maxChars);
   return maxChars;
 }
 
@@ -828,6 +847,9 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     console.log('[DEBUG] 内容已改变，清空编辑缓存');
   }
   // ========== 智能缓存逻辑结束 ==========
+
+  // 清空随机背景图
+  randomBg = '';
 
   // 纸张大小变量
   let currentPaperSize = 'A5'; // 默认 A5
@@ -1042,7 +1064,11 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
 
     <label style="margin-left:5px; display:flex; align-items:center; gap:3px; cursor:pointer;">
       <input type="checkbox" id="fj-preview-image-cb">
-      <span>图片预览</span>
+      <span>预览</span>
+
+      <button id="fj-random-bg" style="background:#fef9e6; border:none; cursor:pointer;" title="随机背景图">
+        <span>🎲</span>
+      </button>
     </label>
  `;
 
@@ -1056,7 +1082,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     bottom: 0;
     left: 0;
     margin: auto;
-    width: 350px;
+    width: 342px;
     max-height: 80vh;
     z-index: 999999;
     display: none;
@@ -1064,15 +1090,14 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     align-items: center;
     justify-content: center;
     overflow: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   `;
 
   // 预览图片元素
   const previewImage = document.createElement('img');
   previewImage.id = 'fj-preview-image';
   previewImage.style.cssText = `
-    max-width: 98%;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    max-width: 100%;
     position: absolute;
     top: 0;
     right: 0;
@@ -1088,12 +1113,12 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     padding: 8px 10px;
     border: none;
     border-radius: 16px;
-    background: rgb(239 68 68 / 50%);
+    background: rgb(239 68 68 / 40%);
     color: white;
     cursor: pointer;
     font-size: 0.9rem;
     position: absolute;
-    top: 5px;
+    top: 10px;
     right: 5px;
   `;
   previewCloseBtn.onclick = () => {
@@ -1353,7 +1378,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     
     // 获取每列最大字数
     const maxChars = getMaxCharsPerColumn(currentPaperSize);
-    console.log("[DEBUG] maxChars: ", maxChars);
+    //console.log("[DEBUG] maxChars: ", maxChars);
     
     for (let para of paragraphs) {
       //console.log('[DEBUG] para:', para);
@@ -1486,6 +1511,15 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     
     showToast(`🧽 已清理 ${removedCount} 处括号，移除 ${removedChars} 个字符`, 2000);
   }
+
+  // 随机背景图
+  function randomBackground() {
+    console.log("进入随机背景图函数");
+
+    let randomNm = Math.floor(Math.random() * (93 - 1 + 1)) + 1;
+    randomBg = 'image/' + String(randomNm).padStart(2, '0') + '.jpg';
+    console.log("randomBg:", randomBg);
+  }
   
   // 编辑功能
   let isEditing = false;
@@ -1616,7 +1650,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   if (endInput) endInput.addEventListener('input', updateEpigraphFormat);
 
   const previewCheckbox = epigraphToolbar.querySelector('#fj-preview-image-cb');
-  console.log("previewCheckbox:", previewCheckbox);
+  //console.log("previewCheckbox:", previewCheckbox);
   previewCheckbox.addEventListener('change', () => { if (previewCheckbox.checked) captureAndDownload(panel, contentArea, titleInput.value, true); });
 
   const minusBtn = document.getElementById('fj-lineheight-minus');
@@ -1973,6 +2007,14 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
         cleanBracketsAndContent();
       });
     }
+    // 随机背景图
+    const randomBgBtn = document.getElementById('fj-random-bg');
+    if (randomBgBtn) {
+      randomBgBtn.addEventListener('click', () => {
+        randomBackground();
+        captureAndDownload(panel, contentArea, titleInput.value, true);
+      });
+    }
   }, 100);
 
   // 关闭和复制功能
@@ -2141,7 +2183,7 @@ function cancelMode() {
   document.removeEventListener('click', onClickHandler, true);
   document.removeEventListener('keydown', onKeyDown);
   clearHighlight();
-  console.log("选择模式已关闭");
+  //console.log("选择模式已关闭");
   //showToast('🔴 选择模式已关闭', 1200);
 }
 

@@ -12,44 +12,6 @@ let currentLineHeight = 1.5;
 
 let horiAlign = 'center';
 
-// ========== 1. 内嵌 html2canvas 精简版 ==========
-(function() {
-  if (typeof window.html2canvas !== 'undefined') return;
-  window.html2canvas = function(element, options) {
-    options = options || {};
-    const scale = options.scale || 1;
-    const backgroundColor = options.backgroundColor || '#ffffff';
-    
-    return new Promise((resolve, reject) => {
-      try {
-        const clone = element.cloneNode(true);
-        const width = element.offsetWidth;
-        const height = element.offsetHeight;
-        
-        const canvas = document.createElement('canvas');
-        canvas.width = width * scale;
-        canvas.height = height * scale;
-        const ctx = canvas.getContext('2d');
-        
-        ctx.fillStyle = backgroundColor;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        const data = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;">${clone.outerHTML}</div></foreignObject></svg>`;
-        
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, width * scale, height * scale);
-          resolve(canvas);
-        };
-        img.onerror = reject;
-        img.src = 'data:image/svg+xml,' + encodeURIComponent(data);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  };
-})();
-
 
 // 创建高亮样式
 const styleId = 'gufeng-highlight-style';
@@ -558,10 +520,10 @@ async function printImage(panelElement, contentElement, titleValue) {
 }
 
 //下载图片函数
-async function captureAndDownload(panelElement, contentElement, titleValue) {
+async function captureAndDownload(panelElement, contentElement, titleValue, isPreview = false) {
   try {
         
-    console.log("下载图片，获取宽度：", contentElement.offsetWidth);
+    console.log(isPreview ? "预览图片" : "下载图片", "获取宽度：", contentElement.offsetWidth);
     console.log("标题：", titleValue);
 
     let bgImage;
@@ -652,13 +614,16 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
     const originalContentArea = panelElement.querySelector('#content-area');
     const originalContentAreaDisplay = originalContentArea?.style.display;
 
-    if (panelElement) panelElement.style.display = 'none';
-    
+    // 预览图片不关闭编辑浮层
+    if (!isPreview) {
+      if (panelElement) panelElement.style.display = 'none';
+    }
+
     cloneContainer.appendChild(contentClone);
     cloneContainer.appendChild(sealStamp);
     document.body.appendChild(cloneContainer);
     
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     const devicePixelRatio = window.devicePixelRatio || 1;
     const rect = cloneContainer.getBoundingClientRect();
@@ -691,57 +656,89 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
           rect.width * scaleX, rect.height * scaleY,
           0, 0, rect.width, rect.height
         );
-        
-        const link = document.createElement('a');
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-        
-        let safeTitle = titleValue.replace(/[\\/:*?"<>|]/g, '-').trim();
-        if (safeTitle.length > 30) safeTitle = safeTitle.substring(0, 30);
-        if (!safeTitle) safeTitle = '无标题';
-        
-        link.download = `${safeTitle}-元素图文-${timestamp}.png`;
-        link.href = canvas.toDataURL('image/png', 1.0);
-        link.click();
-        
-        cloneContainer.remove();
 
-        if (panelElement) panelElement.style.display = 'block';
+        // 区分预览和下载逻辑
+        if (isPreview) {          
+          // 隐藏复制容器
+          cloneContainer.style.cssText += `
+            display: none;
+          `;
 
-        //勾选时自动复制原文本
-        const autoCopyCheckbox = document.getElementById('fj-auto-copy');
-        if (autoCopyCheckbox.checked) {
-          const copyOriginalTextBtn = document.getElementById('fj-copy-original');
-          copyOriginalTextBtn.click();
+          const previewImg = document.getElementById('fj-preview-image');
+          
+          const dataURL = canvas.toDataURL('image/png', '1.0');
+          
+          if (!previewImg) {
+            console.error("❌ 找不到预览图片元素 #fj-preview-image");
+            return;
+          }
+          
+          previewImg.src = dataURL;
+
+          // 显示预览容器
+          const previewContainer = document.getElementById('fj-image-preview-container');
+          previewContainer.style.cssText += `
+            display: block;
+          `
+        } else {
+        
+          // 删除预览容器
+          const previewContainer = document.getElementById('fj-image-preview-container');
+          previewContainer.style.cssText += `
+            display: none;
+          `
+
+          const link = document.createElement('a');
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+          
+          let safeTitle = titleValue.replace(/[\\/:*?"<>|]/g, '-').trim();
+          if (safeTitle.length > 30) safeTitle = safeTitle.substring(0, 30);
+          if (!safeTitle) safeTitle = '无标题';
+          
+          link.download = `${safeTitle}-元素图文-${timestamp}.png`;
+          link.href = canvas.toDataURL('image/png', 1.0);
+          link.click();
+          
+          cloneContainer.remove();
+
+          if (panelElement) panelElement.style.display = 'block';
+
+          //勾选时自动复制原文本
+          const autoCopyCheckbox = document.getElementById('fj-auto-copy');
+          if (autoCopyCheckbox.checked) {
+            const copyOriginalTextBtn = document.getElementById('fj-copy-original');
+            copyOriginalTextBtn.click();
+          }
+          
+          const tempToast = document.createElement('div');
+          tempToast.textContent = '✅ 图片已保存';
+          tempToast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1e293b;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            z-index: 100;
+            font-family: system-ui;
+          `;
+          document.body.appendChild(tempToast);
+          setTimeout(() => tempToast.remove(), 1500);
         }
-        
-        const tempToast = document.createElement('div');
-        tempToast.textContent = '✅ 图片已保存';
-        tempToast.style.cssText = `
-          position: fixed;
-          bottom: 20px;
-          right: 20px;
-          background: #1e293b;
-          color: white;
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-size: 0.8rem;
-          z-index: 100;
-          font-family: system-ui;
-        `;
-        document.body.appendChild(tempToast);
-        setTimeout(() => tempToast.remove(), 1500);
       };
       img.src = response.dataUrl;
     } else {
       throw new Error('截图失败');
     }
   } catch (error) {
-    console.error('截图失败:', error);
+    console.error(isPreview ? '预览失败:' : '下载失败:', error);
     const clone = document.getElementById('fj-clone-container');
     if (clone) clone.remove();
         
     const errorToast = document.createElement('div');
-    errorToast.textContent = '❌ 截图失败';
+    errorToast.textContent = isPreview ? '❌ 预览失败' : '❌ 截图失败';
     errorToast.style.cssText = `
       position: fixed;
       bottom: 20px;
@@ -756,6 +753,12 @@ async function captureAndDownload(panelElement, contentElement, titleValue) {
     `;
     document.body.appendChild(errorToast);
     setTimeout(() => errorToast.remove(), 1500);
+
+    // 预览失败时关闭预览容器
+    if (isPreview) {
+      document.getElementById('fj-image-preview-container').style.display = 'none';
+      document.getElementById('fj-preview-image-cb').checked = false;
+    }
   }
 }
 
@@ -1036,8 +1039,68 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     <button id="fj-clean-brackets" style="background:#fef9e6; color:white; border:none; padding:4px 4px; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:2px; margin-left: 4px;" title="清理括号及其内容">
       <span style="font-size: 1.1rem;">🧽</span>
     </button>
+
+    <label style="margin-left:5px; display:flex; align-items:center; gap:3px; cursor:pointer;">
+      <input type="checkbox" id="fj-preview-image-cb">
+      <span>图片预览</span>
+    </label>
  `;
-  
+
+  // 创建图片预览容器（默认隐藏）
+  const previewContainer = document.createElement('div');
+  previewContainer.id = 'fj-image-preview-container';
+  previewContainer.style.cssText = `
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: auto;
+    width: 350px;
+    max-height: 80vh;
+    z-index: 999999;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+  `;
+
+  // 预览图片元素
+  const previewImage = document.createElement('img');
+  previewImage.id = 'fj-preview-image';
+  previewImage.style.cssText = `
+    max-width: 98%;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: auto;
+  `;
+
+  // 预览容器关闭按钮
+  const previewCloseBtn = document.createElement('button');
+  previewCloseBtn.textContent = '✕';
+  previewCloseBtn.style.cssText = `
+    padding: 8px 10px;
+    border: none;
+    border-radius: 16px;
+    background: rgb(239 68 68 / 50%);
+    color: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+  `;
+  previewCloseBtn.onclick = () => {
+    previewContainer.style.display = 'none';
+    document.getElementById('fj-preview-image-cb').checked = false;
+  };
+
   // 布局模式工具栏
   const layoutToolbar = document.createElement('div');
   layoutToolbar.className = 'fj-layout-toolbar';
@@ -1531,6 +1594,10 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   panel.appendChild(epigraphToolbar);
   panel.appendChild(layoutToolbar);
   panel.appendChild(contentArea);
+
+  previewContainer.appendChild(previewImage);
+  previewContainer.appendChild(previewCloseBtn);
+  document.body.appendChild(previewContainer);
     
   // 绑定事件
   titleInput.addEventListener('input', () => renderVerticalContent(window.editedText || initialText));
@@ -1547,7 +1614,11 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   const endInput = document.getElementById('fj-epigraph-end');
   if (startInput) startInput.addEventListener('input', updateEpigraphFormat);
   if (endInput) endInput.addEventListener('input', updateEpigraphFormat);
-  
+
+  const previewCheckbox = epigraphToolbar.querySelector('#fj-preview-image-cb');
+  console.log("previewCheckbox:", previewCheckbox);
+  previewCheckbox.addEventListener('change', () => { if (previewCheckbox.checked) captureAndDownload(panel, contentArea, titleInput.value, true); });
+
   const minusBtn = document.getElementById('fj-lineheight-minus');
   const plusBtn = document.getElementById('fj-lineheight-plus');
   const resetBtn = document.getElementById('fj-lineheight-reset');
@@ -1979,6 +2050,9 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
           overlay.remove();
         }
       }, 1000);
+      // 自动关闭图片预览
+      const previewContainer = document.getElementById('fj-image-preview-container');
+      previewContainer.style.cssText += 'display: none';
     }
   });
 }
@@ -2067,6 +2141,7 @@ function cancelMode() {
   document.removeEventListener('click', onClickHandler, true);
   document.removeEventListener('keydown', onKeyDown);
   clearHighlight();
+  console.log("选择模式已关闭");
   //showToast('🔴 选择模式已关闭', 1200);
 }
 

@@ -531,12 +531,12 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
     const previousClone = document.getElementById('fj-clone-container');
     if (previousClone) {
       previousClone.remove();
-      //console.log("删除前复制层");
+      console.log("删除前复制层");
     }
     const previousPreview = document.getElementById('fj-image-preview-container');
     if (previousPreview) {
       previousPreview.style.cssText += 'display:none;';
-      //console.log("隐藏前图片层");
+      console.log("隐藏前图片层");
     }
 
     let bgImage;

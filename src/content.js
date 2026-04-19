@@ -527,16 +527,18 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
     console.log(isPreview ? "预览图片" : "下载图片", "获取宽度：", contentElement.offsetWidth);
     console.log("标题：", titleValue);
 
-    // 删除前复制层
-    const previousClone = document.getElementById('fj-clone-container');
-    if (previousClone) {
-      previousClone.remove();
-      console.log("删除前复制层");
-    }
-    const previousPreview = document.getElementById('fj-image-preview-container');
-    if (previousPreview) {
-      previousPreview.style.cssText += 'display:none;';
-      console.log("隐藏前图片层");
+    if (randomBg != ''  ) {
+      // 删除前复制层
+      const previousClone = document.getElementById('fj-clone-container');
+      if (previousClone) {
+        previousClone.remove();
+        console.log("删除前复制层");
+      }
+      const previousPreview = document.getElementById('fj-image-preview-container');
+      if (previousPreview) {
+        previousPreview.style.cssText += 'display:none;';
+        console.log("隐藏前图片层");
+      }
     }
 
     let bgImage;
@@ -678,10 +680,6 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
 
         // 区分预览和下载逻辑
         if (isPreview) {          
-          // 隐藏复制容器
-          cloneContainer.style.cssText += `
-            display: none;
-          `;
 
           const previewImg = document.getElementById('fj-preview-image');
           
@@ -694,18 +692,25 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
           
           previewImg.src = dataURL;
 
+          // 隐藏复制容器
+          cloneContainer.style.cssText += `
+            display: none;
+          `;
+          console.log("隐藏cloneContainer");
           // 显示预览容器
           const previewContainer = document.getElementById('fj-image-preview-container');
           previewContainer.style.cssText += `
             display: block;
-          `
+          `;
+          console.log("显示previewContainer");
         } else {
         
           // 删除预览容器
           const previewContainer = document.getElementById('fj-image-preview-container');
           previewContainer.style.cssText += `
             display: none;
-          `
+          `;
+          console.log("隐藏previewContainer");
 
           const link = document.createElement('a');
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
@@ -1631,7 +1636,6 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
 
   previewContainer.appendChild(previewImage);
   previewContainer.appendChild(previewCloseBtn);
-  document.body.appendChild(previewContainer);
     
   // 绑定事件
   titleInput.addEventListener('input', () => renderVerticalContent(window.editedText || initialText));
@@ -1692,6 +1696,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   panel.appendChild(footer);
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
+  document.body.appendChild(previewContainer);
 
   // 读取保存的自动关闭设置
   let autoCloseCheckbox = document.getElementById('fj-auto-close');

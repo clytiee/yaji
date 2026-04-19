@@ -710,6 +710,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
       border-radius: 16px;
       min-width: 60mm;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      position: relative;
     `;
 
     const title = contentClone.querySelector('#title');
@@ -732,7 +733,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
     sealStamp.id = 'seal-stamp';
     sealStamp.style.cssText = `
       position: absolute;
-      bottom: 45px; left: 45px;
+      bottom: 10px; left: 10px;
       width: 32px; height: 32px;
       opacity: 0.25;
       z-index: 9999;
@@ -752,7 +753,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
     }
 
     cloneContainer.appendChild(contentClone);
-    cloneContainer.appendChild(sealStamp);
+    cloneVerticalContent.appendChild(sealStamp);
     document.body.appendChild(cloneContainer);
     
     await new Promise(resolve => setTimeout(resolve, 100));

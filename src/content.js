@@ -440,6 +440,8 @@ async function printImage(panelElement, contentElement, titleValue) {
     <button id="opacity-plus">+</button>
     <button id="opacity-minus">-</button>
     <div class="opacity-value" id="opacity-value-display">70%</div>
+    <!-- 新增：随机背景图按钮 -->
+    <button id="random-bg-btn" title="随机更换背景图">🎲</button>
   </div>
   <div class="print-content" id="print-content">
     ${contentClone.innerHTML}
@@ -450,6 +452,24 @@ async function printImage(panelElement, contentElement, titleValue) {
       var valueDisplay = document.getElementById('opacity-value-display');
       // 直接存储当前透明度值
       var currentOpacity = ${bgOpacity} || 0.7;
+
+      // 随机背景图函数
+      function getRandomBackgroundImage() {
+        // 生成 1-95 之间的随机数
+        var randomNum = Math.floor(Math.random() * 95) + 1;
+        // 补零成两位数（01-95）
+        var imgName = randomNum.toString().padStart(2, '0') + '.jpg';
+        // 返回背景图URL（根据实际路径调整）
+        return '${chrome.runtime.getURL('image/')}' + imgName;
+      }
+      
+      // 更新背景图
+      function updateBackgroundImage() {
+        const bodyElement = document.body;
+        var newBgUrl = getRandomBackgroundImage();
+        bodyElement.style.backgroundImage = 'url(' + newBgUrl + ')';
+        console.log('已更换背景图:', newBgUrl);
+      }
       
       function updateOpacity() {
         if (contentDiv) {
@@ -465,6 +485,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       // 绑定按钮事件
       var plusBtn = document.getElementById('opacity-plus');
       var minusBtn = document.getElementById('opacity-minus');
+      var randomBgBtn = document.getElementById('random-bg-btn');
       
       if (plusBtn) {
         plusBtn.onclick = function() {
@@ -480,6 +501,13 @@ async function printImage(panelElement, contentElement, titleValue) {
         };
       }
       
+      // 绑定随机背景图按钮事件
+      if (randomBgBtn) {
+        randomBgBtn.onclick = function() {
+          updateBackgroundImage();
+        };
+      }
+
       // 初始化
       updateOpacity();
     })();
@@ -693,9 +721,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
           previewImg.src = dataURL;
 
           // 隐藏复制容器
-          cloneContainer.style.cssText += `
-            display: none;
-          `;
+          cloneContainer.style.display = 'none';
           console.log("隐藏cloneContainer");
           // 显示预览容器
           const previewContainer = document.getElementById('fj-image-preview-container');
@@ -1095,7 +1121,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     align-items: center;
     justify-content: center;
     overflow: auto;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    //box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   `;
 
   // 预览图片元素
@@ -1521,7 +1547,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   function randomBackground() {
     console.log("进入随机背景图函数");
 
-    let randomNm = Math.floor(Math.random() * (93 - 1 + 1)) + 1;
+    let randomNm = Math.floor(Math.random() * (95 - 1 + 1)) + 1;
     randomBg = 'image/' + String(randomNm).padStart(2, '0') + '.jpg';
     console.log("randomBg:", randomBg);
   }

@@ -458,6 +458,8 @@ async function printImage(panelElement, contentElement, titleValue) {
     <button id="fontsize-plus" title="增大字体">+</button>
     <button id="fontsize-minus" title="减小字体">-</button>
     <div class="fontsize-value" id="fontsize-value-display" title="当前字体大小">${fontSize}</div>
+    <!-- 打印按钮 -->
+    <button id="print-btn" title="打印页面">🖨️</button>
     <!-- 新增：随机背景图按钮 -->
     <button id="random-bg-btn" title="随机更换背景图">🎲</button>
     <!-- 垂直居中按钮 -->
@@ -540,6 +542,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       var plusFzBtn = document.getElementById('fontsize-plus');
       var minusFzBtn = document.getElementById('fontsize-minus');
       var vAlignCenter = document.getElementById('valign-center');
+      var printBtn = document.getElementById('print-btn');
       
       if (plusBtn) {
         plusBtn.onclick = function() {
@@ -588,6 +591,13 @@ async function printImage(panelElement, contentElement, titleValue) {
           if (vContent) {
             vContent.style.alignItems = 'center';
           }
+        }
+      }
+
+      // 打印
+      if (printBtn) {
+        printBtn.onclick = function() {
+          window.print();
         }
       }
 

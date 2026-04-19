@@ -397,6 +397,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       //border: solid 1px red;
       //max-width: ${contentWidth};
       width: ${contentWidth};
+      height: ${vContentHeight};
       background: rgba(255, 255, 255, ${bgOpacity});
       border-radius: 16px;
       padding: ${contentPadding}
@@ -418,7 +419,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       align-items: flex-start;
       gap: 10px 0;
       min-height: auto;
-      height: ${vContentHeight};
+      max-height: ${vContentHeight};    
       line-height: ${currentLineHeight};
       padding: ${vContentPadding};
       font-size: ${fontSize};
@@ -450,8 +451,8 @@ async function printImage(panelElement, contentElement, titleValue) {
 <body>
   <div class="seal-stamp"></div>
   <div class="opacity-controls">
-    <button id="opacity-plus">+</button>
-    <button id="opacity-minus">-</button>
+    <button id="opacity-plus" title="增大透明度">+</button>
+    <button id="opacity-minus" title="减小透明度">-</button>
     <div class="opacity-value" id="opacity-value-display">70%</div>
     <!-- 字体大小调整 -->
     <button id="fontsize-plus" title="增大字体">+</button>
@@ -500,6 +501,7 @@ async function printImage(panelElement, contentElement, titleValue) {
         console.log('已更换背景图:', newBgUrl);
       }
       
+      // 更新透明度
       function updateOpacity() {
         if (contentDiv) {
           // 直接设置内联样式，覆盖 CSS 类
@@ -515,8 +517,12 @@ async function printImage(panelElement, contentElement, titleValue) {
       function updateFontsize() {
         if (vContent) {
           vContent.style.fontSize = newFontSize;
-          title.style.fontSize = newTitleFontSize;
-          subtitle.style.fontSize = newSubtitleFontSize;
+          if (title) {
+            title.style.fontSize = newTitleFontSize;
+          }
+          if (subtitle) {
+            subtitle.style.fontSize = newSubtitleFontSize;
+          }
           epigraphs.forEach(el => {
             el.style.fontSize = newEpiFontSize;
           });
@@ -534,7 +540,6 @@ async function printImage(panelElement, contentElement, titleValue) {
       var plusFzBtn = document.getElementById('fontsize-plus');
       var minusFzBtn = document.getElementById('fontsize-minus');
       var vAlignCenter = document.getElementById('valign-center');
-      console.log("vAlignCenter:", vAlignCenter);
       
       if (plusBtn) {
         plusBtn.onclick = function() {

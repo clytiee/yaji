@@ -211,6 +211,7 @@ async function printImage(panelElement, contentElement, titleValue) {
     const originalScrollX = window.scrollX;
     const originalScrollY = window.scrollY;
     
+    let fontSize;
     let paperMargin;
     let sealPosition;
     let sealSize;
@@ -220,7 +221,9 @@ async function printImage(panelElement, contentElement, titleValue) {
     let vContentPadding;
     let contentMargin;
     let titleFontStyle;
+    let titleFontSize;
     let subtitleFontStyle;
+    let subtitleFontSize;
     let bgHeight;
 
     // 获取纸张大小和方向设置
@@ -244,8 +247,9 @@ async function printImage(panelElement, contentElement, titleValue) {
       vContentHeight = '100mm;';
       vContentPadding = '5px;';
       contentMargin = '8px;';
-      titleFontStyle = 'font-size: 10pt; font-weight: bold;';
-      subtitleFontStyle = 'font-size: 8pt;';
+      titleFontSize = '10pt;';
+      titleFontWeight = 'bold;';
+      subtitleFontSize = '8pt;';
       panelWidth = '375';
       bgHeight = '120mm;';
     } else {
@@ -262,8 +266,9 @@ async function printImage(panelElement, contentElement, titleValue) {
       contentPadding = '16px;';
       vContentPadding = '10px;';
       contentMargin = '20px;';
-      titleFontStyle = 'font-size: 1rem; font-weight: bold;';
-      subtitleFontStyle = 'font-size: 0.8rem;';
+      titleFontSize = '14pt;';
+      titleFontWeight = 'bold;';
+      subtitleFontSize = '12pt;'
       panelWidth = panelElement.offsetWidth;
       if (paperSize === 'A5 portrait') {
         vContentHeight = '180mm;';
@@ -410,24 +415,26 @@ async function printImage(panelElement, contentElement, titleValue) {
       height: ${vContentHeight};
       line-height: ${currentLineHeight};
       padding: ${vContentPadding};
+      font-size: ${fontSize};
     }
     .vertical-paragraph {
       writing-mode: vertical-rl;
       text-orientation: upright;
-      font-size: ${fontSize};
       margin: 0 0 0 7px;
       display: inline-block;
       vertical-align: top;
       padding-top: ${contentPadding};
     }
     .vertical-paragraph.epigraph { font-size: ${epiFontSize} !important; }
-    .title { ${titleFontStyle} !important;}
-    .subtitle { ${subtitleFontStyle} !important;}
+    .title {
+      font-size: ${titleFontSize} !important;
+      font-weight: ${titleFontWeight} !important;
+    }
+    .subtitle {
+      font-size: ${subtitleFontSize} !important;
+    }
 
     @media print {
-      body, .vertical-paragraph {
-        font-size: ${fontSize};
-      }
       .vertical-content { justify-content: ${horiAlign}; }
       .opacity-controls { display: none !important; }
       @page { size: ${paperSize}; margin: ${paperMargin}; }
@@ -440,6 +447,10 @@ async function printImage(panelElement, contentElement, titleValue) {
     <button id="opacity-plus">+</button>
     <button id="opacity-minus">-</button>
     <div class="opacity-value" id="opacity-value-display">70%</div>
+    <!-- 字体大小调整 -->
+    <button id="fontsize-plus" title="增大字体">+</button>
+    <button id="fontsize-minus" title="减小字体">-</button>
+    <div class="fontsize-value" id="fontsize-value-display" title="当前字体大小">${fontSize}</div>
     <!-- 新增：随机背景图按钮 -->
     <button id="random-bg-btn" title="随机更换背景图">🎲</button>
   </div>
@@ -452,6 +463,15 @@ async function printImage(panelElement, contentElement, titleValue) {
       var valueDisplay = document.getElementById('opacity-value-display');
       // 直接存储当前透明度值
       var currentOpacity = ${bgOpacity} || 0.7;
+      // 字体大小设置
+      var vContent = document.getElementById('vertical-content');
+      var title = document.getElementById('title');
+      var subtitle = document.getElementById('subtitle');
+      var epigraphs = document.querySelectorAll('.vertical-paragraph.epigraph');
+      var newFontSize = '${fontSize}' || '14pt';
+      var newTitleFontSize = '${titleFontSize}' || '14pt';
+      var newSubtitleFontSize = '${subtitleFontSize}' || '12pt';
+      var newEpiFontSize = '${epiFontSize}' || '10pt';
 
       // 随机背景图函数
       function getRandomBackgroundImage() {
@@ -481,11 +501,26 @@ async function printImage(panelElement, contentElement, titleValue) {
           valueDisplay.textContent = Math.round(currentOpacity * 100) + '%';
         }
       }
+
+      // 更新字体大小
+      function updateFontsize() {
+        if (vContent) {
+          vContent.style.fontSize = newFontSize;
+          title.style.fontSize = newTitleFontSize;
+          subtitle.style.fontSize = newSubtitleFontSize;
+          epigraphs.forEach(el => {
+            el.style.fontSize = newEpiFontSize;
+          });
+          console.log("sizes:", newFontSize, newTitleFontSize, newSubtitleFontSize, newEpiFontSize);
+        }
+      }
       
       // 绑定按钮事件
       var plusBtn = document.getElementById('opacity-plus');
       var minusBtn = document.getElementById('opacity-minus');
       var randomBgBtn = document.getElementById('random-bg-btn');
+      var plusFzBtn = document.getElementById('fontsize-plus');
+      var minusFzBtn = document.getElementById('fontsize-minus');
       
       if (plusBtn) {
         plusBtn.onclick = function() {
@@ -506,6 +541,26 @@ async function printImage(panelElement, contentElement, titleValue) {
         randomBgBtn.onclick = function() {
           updateBackgroundImage();
         };
+      }
+
+      // 字体大小调整
+      if (plusFzBtn) {
+        plusFzBtn.onclick = function() {
+          newFontSize = (parseInt(newFontSize) + 1) + 'pt';
+          newTitleFontSize = (parseInt(newTitleFontSize) + 1) + 'pt';
+          newSubtitleFontSize = (parseInt(newSubtitleFontSize) + 1) + 'pt';
+          newEpiFontSize = (parseInt(newEpiFontSize) + 1) + 'pt';
+          updateFontsize();
+        }
+      }
+      if (minusFzBtn) {
+        minusFzBtn.onclick = function() {
+          newFontSize = (parseInt(newFontSize) - 1) + 'pt';
+          newTitleFontSize = (parseInt(newTitleFontSize) - 1) + 'pt';
+          newSubtitleFontSize = (parseInt(newSubtitleFontSize) - 1) + 'pt';
+          newEpiFontSize = (parseInt(newEpiFontSize) - 1) + 'pt';
+          updateFontsize();
+        }
       }
 
       // 初始化
@@ -1433,7 +1488,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     // 当前总列数赋值给全局变量
     currentColumnCount = totalCount;
 
-    contentArea.innerHTML = `<div class="vertical-content">${titleHtml}${contentHtml}</div>`;
+    contentArea.innerHTML = `<div class="vertical-content" id="vertical-content">${titleHtml}${contentHtml}</div>`;
     //console.log('[DEBUG] DOM 已更新, innerHTML 长度:', contentArea.innerHTML.length);
     
     // 应用当前行距

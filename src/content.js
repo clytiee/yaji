@@ -273,19 +273,19 @@ async function printImage(panelElement, contentElement, titleValue) {
       subtitleFontSize = '12pt;'
       panelWidth = panelElement.offsetWidth;
       if (paperSize === 'A5 portrait') {
-        contentWidth = '140mm;';
+        contentWidth = '120mm;';
         vContentHeight = '180mm;';
         bgHeight = '200mm;';
       } else if (paperSize === 'A5 landscape') {
-        contentWidth = '100mm;';
-        vContentHeight = '129mm;';
-        bgHeight = '149mm';
+        contentWidth = '185mm;';
+        vContentHeight = '120mm;';
+        bgHeight = '119mm';
       } else if (paperSize === 'A4 portrait') {
         contentWidth = '180mm;';
         vContentHeight = '267mm;';
         bgHeight = '287mm;';
       } else {
-        contentWidth = '287mm;';
+        contentWidth = '270mm;';
         vContentHeight = '180mm;';
         bgHeight = '200mm';
       }

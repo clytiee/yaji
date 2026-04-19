@@ -217,6 +217,7 @@ async function printImage(panelElement, contentElement, titleValue) {
     let sealSize;
     let epiFontSize;
     let bodyPadding;
+    let contentWidth;
     let contentPadding;
     let vContentPadding;
     let contentMargin;
@@ -243,6 +244,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       lineHeight = '1';
       epiFontSize = '8pt;';
       bodyPadding = '8px;';
+      contentWidth = '60mm;';
       contentPadding = '10px;';
       vContentHeight = '100mm;';
       vContentPadding = '5px;';
@@ -271,15 +273,19 @@ async function printImage(panelElement, contentElement, titleValue) {
       subtitleFontSize = '12pt;'
       panelWidth = panelElement.offsetWidth;
       if (paperSize === 'A5 portrait') {
+        contentWidth = '140mm;';
         vContentHeight = '180mm;';
         bgHeight = '200mm;';
       } else if (paperSize === 'A5 landscape') {
+        contentWidth = '100mm;';
         vContentHeight = '129mm;';
         bgHeight = '149mm';
       } else if (paperSize === 'A4 portrait') {
+        contentWidth = '180mm;';
         vContentHeight = '267mm;';
         bgHeight = '287mm;';
       } else {
+        contentWidth = '287mm;';
         vContentHeight = '180mm;';
         bgHeight = '200mm';
       }
@@ -380,7 +386,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       transition: all 0.2s ease;
     }
     .opacity-controls button:hover { background: #1e2a4a; transform: scale(1.05); }
-    .opacity-value {
+    .opacity-value, .fontsize-value {
       text-align: center;
       font-size: 12px;
       color: #2c3e66;
@@ -389,8 +395,8 @@ async function printImage(panelElement, contentElement, titleValue) {
     }
     .print-content {
       //border: solid 1px red;
-      max-width: ${panelWidth}px;
-      width: 95%;
+      //max-width: ${contentWidth};
+      width: ${contentWidth};
       background: rgba(255, 255, 255, ${bgOpacity});
       border-radius: 16px;
       padding: ${contentPadding}
@@ -453,6 +459,8 @@ async function printImage(panelElement, contentElement, titleValue) {
     <div class="fontsize-value" id="fontsize-value-display" title="当前字体大小">${fontSize}</div>
     <!-- 新增：随机背景图按钮 -->
     <button id="random-bg-btn" title="随机更换背景图">🎲</button>
+    <!-- 垂直居中按钮 -->
+    <button id="valign-center" title="文字垂直居中">↕️</button>
   </div>
   <div class="print-content" id="print-content">
     ${contentClone.innerHTML}
@@ -465,6 +473,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       var currentOpacity = ${bgOpacity} || 0.7;
       // 字体大小设置
       var vContent = document.getElementById('vertical-content');
+      var fontsizeDisplay = document.getElementById('fontsize-value-display');
       var title = document.getElementById('title');
       var subtitle = document.getElementById('subtitle');
       var epigraphs = document.querySelectorAll('.vertical-paragraph.epigraph');
@@ -513,6 +522,9 @@ async function printImage(panelElement, contentElement, titleValue) {
           });
           console.log("sizes:", newFontSize, newTitleFontSize, newSubtitleFontSize, newEpiFontSize);
         }
+        if (fontsizeDisplay) {
+          fontsizeDisplay.textContent = newFontSize;
+        }
       }
       
       // 绑定按钮事件
@@ -521,6 +533,8 @@ async function printImage(panelElement, contentElement, titleValue) {
       var randomBgBtn = document.getElementById('random-bg-btn');
       var plusFzBtn = document.getElementById('fontsize-plus');
       var minusFzBtn = document.getElementById('fontsize-minus');
+      var vAlignCenter = document.getElementById('valign-center');
+      console.log("vAlignCenter:", vAlignCenter);
       
       if (plusBtn) {
         plusBtn.onclick = function() {
@@ -560,6 +574,15 @@ async function printImage(panelElement, contentElement, titleValue) {
           newSubtitleFontSize = (parseInt(newSubtitleFontSize) - 1) + 'pt';
           newEpiFontSize = (parseInt(newEpiFontSize) - 1) + 'pt';
           updateFontsize();
+        }
+      }
+
+      // 文字垂直居中
+      if (vAlignCenter) {
+        vAlignCenter.onclick = function() {
+          if (vContent) {
+            vContent.style.alignItems = 'center';
+          }
         }
       }
 

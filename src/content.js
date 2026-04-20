@@ -266,7 +266,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       lineHeight = currentLineHeight;
       bodyPadding = '12px;';
       contentPadding = '16px;';
-      vContentPadding = '10px;';
+      vContentPadding = '10px 0;';
       contentMargin = '20px;';
       titleFontSize = '14pt;';
       titleFontWeight = 'bold;';
@@ -342,7 +342,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       background-repeat: repeat;
       background-attachment: fixed;
       background-clip: border-box;
-      background-size: 100%;  /* 宽度100%，高度自动（可能被裁剪） */
+      background-size: cover;  /* 宽度100%，高度自动（可能被裁剪） */
     }
     .seal-stamp {
       ${sealDisplay}
@@ -1059,7 +1059,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
         vertical-align: top;
         transition: line-height 0.1s ease;
       }
-      .vertical-paragraph.epigraph { font-size: 0.7rem !important; }
+      .vertical-paragraph.epigraph { font-size: 0.8rem !important; }
       .vertical-paragraph.compact { margin: 0 0; }
       
       .vertical-content {

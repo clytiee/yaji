@@ -825,17 +825,19 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
           console.log("隐藏cloneContainer");
           // 显示预览容器
           const previewContainer = document.getElementById('fj-image-preview-container');
-          previewContainer.style.cssText += `
-            display: block;
-          `;
+          //previewContainer.style.cssText += `
+          //  display: block;
+          //`;
+		  previewContainer.style.display = 'block';
           console.log("显示previewContainer");
         } else {
         
           // 删除预览容器
           const previewContainer = document.getElementById('fj-image-preview-container');
-          previewContainer.style.cssText += `
-            display: none;
-          `;
+          //previewContainer.style.cssText += `
+          //  display: none;
+          //`;
+		  previewContainer.style.display = 'none';
           console.log("隐藏previewContainer");
 
           const link = document.createElement('a');
@@ -1025,7 +1027,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   const panel = document.createElement('div');
   panel.id = 'fj-a5-panel';
   panel.style.cssText = `
-    width: 170mm;
+    width: 190mm;
     height: 220mm;
     max-width: 90vw;
     background: white;
@@ -1213,7 +1215,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     bottom: 0;
     left: 0;
     margin: auto;
-    width: 342px;
+    width: 380px;
     max-height: 80vh;
     z-index: 999999;
     display: none;
@@ -1241,7 +1243,6 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   const previewCloseBtn = document.createElement('button');
   previewCloseBtn.textContent = '✕';
   previewCloseBtn.style.cssText = `
-    padding: 8px 10px;
     border: none;
     border-radius: 16px;
     background: rgb(239 68 68 / 40%);
@@ -1251,6 +1252,8 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     position: absolute;
     top: 10px;
     right: 5px;
+	height: 30px;
+	width: 30px;
   `;
   previewCloseBtn.onclick = () => {
     previewContainer.style.display = 'none';
@@ -2225,7 +2228,8 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
       }, 1000);
       // 自动关闭图片预览
       const previewContainer = document.getElementById('fj-image-preview-container');
-      previewContainer.style.cssText += 'display: none';
+      //previewContainer.style.cssText += 'display: none';
+	  previewContainer.style.display = 'none';
     }
   });
 }

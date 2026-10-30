@@ -14,6 +14,56 @@ let horiAlign = 'center';
 
 let randomBg = '';
 
+// ===== 随机背景图去重：持久记忆最近用过的图，降低重复率 =====
+const BG_TOTAL = 95;                      // 背景图数量：01-95
+const BG_HISTORY_KEY = 'randomBgHistory'; // 最近使用记录（storage.local）
+const BG_HISTORY_SIZE = 50;               // 记忆条数：越大越不易重复
+
+// 读取最近用过的背景图序号（最新的在前）
+async function loadBgHistory() {
+  try {
+    const r = await chrome.storage.local.get([BG_HISTORY_KEY]);
+    const h = r[BG_HISTORY_KEY];
+    return Array.isArray(h)
+      ? h.filter(n => Number.isInteger(n) && n >= 1 && n <= BG_TOTAL)
+      : [];
+  } catch (e) { return []; }
+}
+
+// 记录一次背景图使用，返回更新后的历史
+async function rememberBgIndex(idx) {
+  try {
+    const hist = await loadBgHistory();
+    const next = [idx].concat(hist.filter(n => n !== idx)).slice(0, BG_HISTORY_SIZE);
+    await chrome.storage.local.set({ [BG_HISTORY_KEY]: next });
+    return next;
+  } catch (e) { return [idx]; }
+}
+
+// 在排除当前图与历史后，从剩余候选中随机取一个序号
+async function pickRandomBgIndex(excludeIndex) {
+  let banned = await loadBgHistory();
+  if (Number.isInteger(excludeIndex) && excludeIndex >= 1 && excludeIndex <= BG_TOTAL) {
+    banned = banned.concat([excludeIndex]);
+  }
+  const bannedSet = new Set(banned);
+  let candidates = [];
+  for (let i = 1; i <= BG_TOTAL; i++) if (!bannedSet.has(i)) candidates.push(i);
+  // 全部用尽时（极罕见），退化为仅排除当前
+  if (!candidates.length) {
+    for (let i = 1; i <= BG_TOTAL; i++) if (i !== excludeIndex) candidates.push(i);
+  }
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+// 接收打印窗口回传的已用背景图序号，写入去重记忆
+window.addEventListener('message', (event) => {
+  const d = event.data;
+  if (d && d.type === 'yaji-bg-used' && Number.isInteger(d.index)) {
+    rememberBgIndex(d.index);
+  }
+});
+
 // 创建高亮样式
 const styleId = 'gufeng-highlight-style';
 if (!document.getElementById(styleId)) {
@@ -320,6 +370,15 @@ async function printImage(panelElement, contentElement, titleValue) {
     const boxShadowStyle = plainMode ? 'box-shadow: none;' : 'box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);';
     //印章
     const sealDisplay = plainMode ? 'display: none;' : 'display: block;';
+
+    // ===== 随机背景图去重记忆：把最近用过的图和当前图注入打印窗口 =====
+    let bgHistory = await loadBgHistory();
+    let lastBgIdx = -1;
+    if (randomBg) {
+      const m = randomBg.match(/(\d{2})\.jpg$/);
+      if (m) lastBgIdx = parseInt(m[1], 10);
+    }
+    const bgHistoryJson = JSON.stringify(bgHistory);
     
     // 构建 HTML 内容
     const htmlContent = `<!DOCTYPE html>
@@ -491,10 +550,22 @@ async function printImage(panelElement, contentElement, titleValue) {
       var newSubtitleFontSize = '${subtitleFontSize}' || '12pt';
       var newEpiFontSize = '${epiFontSize}' || '10pt';
 
-      // 随机背景图函数
+      // ===== 随机背景图去重：避免与最近用过的图/当前图重复 =====
+      var bgHistory = ${bgHistoryJson};   // 最近用过的背景图序号（继承自主页面记忆）
+      var lastBgIdx = ${lastBgIdx};       // 当前显示的背景图序号
       function getRandomBackgroundImage() {
-        // 生成 1-95 之间的随机数
-        var randomNum = Math.floor(Math.random() * 95) + 1;
+        // 排除当前图与最近用过的图
+        var banned = bgHistory.slice();
+        if (lastBgIdx > 0) banned.push(lastBgIdx);
+        var candidates = [];
+        for (var i = 1; i <= 95; i++) {
+          if (banned.indexOf(i) === -1) candidates.push(i);
+        }
+        if (candidates.length === 0) {
+          for (var k = 1; k <= 95; k++) { if (k !== lastBgIdx) candidates.push(k); }
+        }
+        var randomNum = candidates[Math.floor(Math.random() * candidates.length)];
+        lastBgIdx = randomNum;
         // 补零成两位数（01-95）
         var imgName = randomNum.toString().padStart(2, '0') + '.jpg';
         // 返回背景图URL（根据实际路径调整）
@@ -506,6 +577,12 @@ async function printImage(panelElement, contentElement, titleValue) {
         const bodyElement = document.body;
         var newBgUrl = getRandomBackgroundImage();
         bodyElement.style.backgroundImage = 'url(' + newBgUrl + ')';
+        // 把新选中的背景图序号回传给主页面，写入去重记忆
+        if (window.opener) {
+          try {
+            window.opener.postMessage({ type: 'yaji-bg-used', index: lastBgIdx }, '*');
+          } catch (e) {}
+        }
         console.log('已更换背景图:', newBgUrl);
       }
       
@@ -1646,12 +1723,18 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     showToast(`🧽 已清理 ${removedCount} 处括号，移除 ${removedChars} 个字符`, 2000);
   }
 
-  // 随机背景图
-  function randomBackground() {
+  // 随机背景图（避开最近用过的图，降低重复率）
+  async function randomBackground() {
     console.log("进入随机背景图函数");
 
-    let randomNm = Math.floor(Math.random() * (95 - 1 + 1)) + 1;
-    randomBg = 'image/' + String(randomNm).padStart(2, '0') + '.jpg';
+    let curIndex = null;
+    if (randomBg) {
+      const m = randomBg.match(/(\d{2})\.jpg$/);
+      if (m) curIndex = parseInt(m[1], 10);
+    }
+    const idx = await pickRandomBgIndex(curIndex);
+    randomBg = 'image/' + String(idx).padStart(2, '0') + '.jpg';
+    await rememberBgIndex(idx);
     console.log("randomBg:", randomBg);
   }
   
@@ -2144,8 +2227,8 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     // 随机背景图
     const randomBgBtn = document.getElementById('fj-random-bg');
     if (randomBgBtn) {
-      randomBgBtn.addEventListener('click', () => {
-        randomBackground();
+      randomBgBtn.addEventListener('click', async () => {
+        await randomBackground();
         captureAndDownload(panel, contentArea, titleInput.value, true);
       });
     }

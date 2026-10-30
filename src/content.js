@@ -103,8 +103,14 @@ function onClickHandler(event) {
         if (lines[1].length <= 20) {
           subtitle = lines[1].trim();
         }
-        // 正文去掉前两行
-        const bodyText = lines.slice(2).join('\n');
+        // 若第二行是作者、第三行是朝代（如〔唐代〕），合并进副标题并从正文剔除
+        let bodyStart = 2;
+        if (subtitle && lines[2] && /^〔[^〔〕]{1,12}〕$/.test(lines[2].trim())) {
+          subtitle += lines[2].trim();
+          bodyStart = 3;
+        }
+        // 正文去掉已用作标题/副标题的行
+        const bodyText = lines.slice(bodyStart).join('\n');
         showA5FloatingPanel(bodyText, title, subtitle);
       } else if (lines.length === 1) {
         title = lines[0].trim();

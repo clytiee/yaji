@@ -349,6 +349,44 @@
         grid-template-columns: repeat(3, 1fr);
       }
     }
+
+    /* 浮动导航条 */
+    #fj-navbar {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 4px;
+      background: rgba(44, 62, 102, 0.92);
+      padding: 6px 10px;
+      border-radius: 999px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+      z-index: 50;
+      max-width: 92vw;
+      overflow-x: auto;
+    }
+
+    #fj-navbar button {
+      background: transparent;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+
+    #fj-navbar button:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    #fj-navbar button.active {
+      background: rgba(255, 255, 255, 0.25);
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -360,7 +398,7 @@
     
     <div class="content">
       <!-- 背景图选择 -->
-      <div class="section">
+      <div class="section" id="sec-bg">
         <h2>📷 背景图库</h2>
         <div class="bg-grid" id="bg-grid">
           <!-- 动态加载背景图列表 -->
@@ -375,7 +413,7 @@
       </div>
       
       <!-- 透明度调整 -->
-      <div class="section">
+      <div class="section" id="sec-opacity">
         <h2>🔆 背景透明度</h2>
         <div class="opacity-control">
           <label>透明度:</label>
@@ -390,7 +428,7 @@
       </div>
 
       <!-- 随机背景设置 -->
-      <div class="section">
+      <div class="section" id="sec-random">
         <h2>🎲 随机背景</h2>
         <div class="opacity-control">
           <label>随机背景不重复个数:</label>
@@ -399,8 +437,18 @@
         </div>
       </div>
 
+      <!-- 复制设置 -->
+      <div class="section" id="sec-copy">
+        <h2>📋 复制</h2>
+        <div class="opacity-control">
+          <label>复制末尾标签:</label>
+          <input type="text" id="copy-tag-text" style="flex:1; min-width:220px; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px;" placeholder="#诗词 #国学 #古风 #中国文化">
+          <span style="font-size:0.8rem; color:#64748b;">勾选编辑页"签"后，复制诗词时在末尾追加的标签</span>
+        </div>
+      </div>
+
       <!-- 实时预览 - 可调节高度 -->
-      <div class="section">
+      <div class="section" id="sec-preview">
         <!--<h2>📄 实时预览</h2>-->
         <div class="preview-area">
           <div class="preview-header">
@@ -431,6 +479,14 @@
   </div>
   
   <div id="status" class="status">✅ 已保存</div>
+
+  <nav id="fj-navbar">
+    <button data-target="sec-bg">背景图库</button>
+    <button data-target="sec-opacity">透明度</button>
+    <button data-target="sec-random">随机背景</button>
+    <button data-target="sec-copy">复制</button>
+    <button data-target="sec-preview">预览</button>
+  </nav>
   
   <script src="options.js"></script>
 </body>

@@ -19,7 +19,7 @@ let opacityMemoryMap = {}; // 存储每个背景图的透明度 {path: opacity}
 
 // 加载保存的设置
 function loadSettings() {
-  chrome.storage.sync.get(['bgImage', 'bgOpacity', 'previewHeight', 'opacityMemoryEnabled', 'opacityMemoryMap', 'bgHistorySize'], (result) => {
+  chrome.storage.sync.get(['bgImage', 'bgOpacity', 'previewHeight', 'opacityMemoryEnabled', 'opacityMemoryMap', 'bgHistorySize', 'copyTagText'], (result) => {
     currentBgImage = result.bgImage || defaultBgImages[0].path;
     currentOpacity = result.bgOpacity || 0.7;
     previewHeight = result.previewHeight || 60;
@@ -42,6 +42,16 @@ function loadSettings() {
       bgHistoryInput.addEventListener('input', (e) => {
         const v = parseInt(e.target.value, 10);
         if (v && v >= 1) chrome.storage.sync.set({ bgHistorySize: v });
+      });
+    }
+
+    // 设置复制末尾标签
+    const copyTagInput = document.getElementById('copy-tag-text');
+    if (copyTagInput) {
+      copyTagInput.value = result.copyTagText || '#诗词 #国学 #古风 #中国文化';
+      copyTagInput.addEventListener('change', (e) => {
+        chrome.storage.sync.set({ copyTagText: e.target.value.trim() });
+        showStatus('💾 复制标签已保存');
       });
     }
 
@@ -407,8 +417,37 @@ function setupOpacity() {
   });
 }
 
+// 浮动导航条：点击平滑滚动到对应区块
+function setupNavbar() {
+  const navbar = document.getElementById('fj-navbar');
+  if (!navbar) return;
+  const sections = document.querySelectorAll('.section');
+  const buttons = Array.from(navbar.querySelectorAll('button'));
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const el = document.getElementById(btn.dataset.target);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  // 滚动时高亮当前区块
+  const onScroll = () => {
+    let current = buttons[0] && buttons[0].dataset.target;
+    const midY = window.innerHeight / 2;
+    for (const sec of sections) {
+      const r = sec.getBoundingClientRect();
+      if (r.top <= midY) current = sec.id;
+    }
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.target === current));
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+}
+
 // 初始化
 loadSettings();
 setupUpload();
 setupOpacity();
 setupPreviewHeight();
+setupNavbar();

@@ -2569,7 +2569,9 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     let copyText = titleValue + '\n' + initialText;
     const withTagCheckbox = document.getElementById('fj-with-tag');
     if (withTagCheckbox.checked) {
-      copyText += "\n#诗词 #国学 #古风 #中国文化";
+      const tagRes = await chrome.storage.sync.get(['copyTagText']);
+      const tagText = tagRes.copyTagText || '#诗词 #国学 #古风 #中国文化';
+      copyText += '\n' + tagText;
     }
     try { await navigator.clipboard.writeText(copyText); showToast('✅ 文本已复制', 1500); } 
     catch { showToast('❌ 复制失败', 1500); }
@@ -2578,7 +2580,14 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   // 监听复制文本事件
   document.getElementById('fj-copy-text')?.addEventListener('click', async () => {
     const contentArea = document.getElementById('content-area');
-    try { await navigator.clipboard.writeText(contentArea.innerText || initialText); showToast('✅ 文本已复制', 1500); } 
+    let copyText = contentArea.innerText || initialText;
+    const withTagCheckbox = document.getElementById('fj-with-tag');
+    if (withTagCheckbox.checked) {
+      const tagRes = await chrome.storage.sync.get(['copyTagText']);
+      const tagText = tagRes.copyTagText || '#诗词 #国学 #古风 #中国文化';
+      copyText += '\n' + tagText;
+    }
+    try { await navigator.clipboard.writeText(copyText); showToast('✅ 文本已复制', 1500); } 
     catch { showToast('❌ 复制失败', 1500); }
   });
 

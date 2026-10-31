@@ -725,6 +725,32 @@ async function printImage(panelElement, contentElement, titleValue) {
 }
 
 //下载图片函数
+// 给预览用的成品卡片加上关闭按钮（预览模式直接复用成品卡片，不再截小图）
+function attachPreviewClose(cloneContainer) {
+  const btn = document.createElement('button');
+  btn.textContent = '✕';
+  btn.style.cssText = `
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 16px;
+    background: rgb(239 68 68 / 40%);
+    color: white;
+    cursor: pointer;
+    z-index: 10001;
+    font-size: 0.9rem;
+  `;
+  btn.onclick = () => {
+    cloneContainer.remove();
+    const cb = document.getElementById('fj-preview-image-cb');
+    if (cb) cb.checked = false;
+  };
+  cloneContainer.appendChild(btn);
+}
+
 async function captureAndDownload(panelElement, contentElement, titleValue, isPreview = false) {
   try {
         
@@ -848,6 +874,12 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
     cloneContainer.appendChild(contentClone);
     cloneVerticalContent.appendChild(sealStamp);
     document.body.appendChild(cloneContainer);
+
+    // 预览模式：直接把成品卡片作为预览显示，不再额外截一张小图，避免"两张图"重影/闪烁
+    if (isPreview) {
+      attachPreviewClose(cloneContainer);
+      return;
+    }
     
     await new Promise(resolve => setTimeout(resolve, 100));
     
@@ -894,18 +926,18 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
             console.error("❌ 找不到预览图片元素 #fj-preview-image");
             return;
           }
-          
+
+          // 显式锁定预览图显示尺寸 = 截图区域尺寸，避免解码时从 0 跳到固有像素导致的"放大再缩小"闪烁
+          previewImg.style.width = rect.width + 'px';
+          previewImg.style.height = rect.height + 'px';
           previewImg.src = dataURL;
 
           // 隐藏复制容器
           cloneContainer.style.display = 'none';
           console.log("隐藏cloneContainer");
-          // 显示预览容器
+          // 显示预览容器（block 布局，避免 flex + overflow 在溢出时裁切内容导致预览"消失"）
           const previewContainer = document.getElementById('fj-image-preview-container');
-          //previewContainer.style.cssText += `
-          //  display: block;
-          //`;
-		  previewContainer.style.display = 'block';
+          previewContainer.style.display = 'block';
           console.log("显示previewContainer");
         } else {
         
@@ -1286,21 +1318,15 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   const previewContainer = document.createElement('div');
   previewContainer.id = 'fj-image-preview-container';
   previewContainer.style.cssText = `
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    margin: auto;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     width: 380px;
     max-height: 80vh;
     z-index: 999999;
     display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     overflow: auto;
-    //box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   `;
 
   // 预览图片元素
@@ -1308,12 +1334,9 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   previewImage.id = 'fj-preview-image';
   previewImage.style.cssText = `
     max-width: 100%;
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    margin: auto;
+    height: auto;
+    display: block;
+    margin: 0 auto;
   `;
 
   // 预览容器关闭按钮
@@ -1867,7 +1890,15 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
 
   const previewCheckbox = epigraphToolbar.querySelector('#fj-preview-image-cb');
   //console.log("previewCheckbox:", previewCheckbox);
-  previewCheckbox.addEventListener('change', () => { if (previewCheckbox.checked) captureAndDownload(panel, contentArea, titleInput.value, true); });
+  previewCheckbox.addEventListener('change', () => {
+    if (previewCheckbox.checked) {
+      captureAndDownload(panel, contentArea, titleInput.value, true);
+    } else {
+      // 取消预览：移除预览用的成品卡片
+      const clone = document.getElementById('fj-clone-container');
+      if (clone) clone.remove();
+    }
+  });
 
   const minusBtn = document.getElementById('fj-lineheight-minus');
   const plusBtn = document.getElementById('fj-lineheight-plus');

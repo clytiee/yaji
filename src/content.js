@@ -365,7 +365,11 @@ async function printImage(panelElement, contentElement, titleValue) {
     }
 
     //背景
-    const backgroundStyle = plainMode ? 'background-color: white;' : `background-image: url('${bgImageUrl}');'`;
+    const backgroundStyle = plainMode ? 'background-color: white;' : `background-image: url('${bgImageUrl}');`;
+    // 打印用背景样式：必须带 !important，覆盖缩放态设置的内联 background-image:none
+    const printBgStyle = plainMode
+      ? 'background-color: white !important;'
+      : `background-image: url('${bgImageUrl}') !important; background-size: cover !important; background-repeat: no-repeat !important; background-attachment: scroll !important; background-position: center !important;`;
     //文字区阴影
     const boxShadowStyle = plainMode ? 'box-shadow: none;' : 'box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);';
     //印章
@@ -451,6 +455,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       transition: all 0.2s ease;
     }
     .opacity-controls button:hover { background: #1e2a4a; transform: scale(1.05); }
+    .opacity-controls button:disabled { opacity: 0.35; cursor: default; transform: none; background: rgba(44, 62, 102, 0.7); }
     .opacity-value, .fontsize-value {
       text-align: center;
       font-size: 12px;
@@ -468,6 +473,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       padding: ${contentPadding}
       padding-top: 0;
       box-sizing: border-box;
+      position: relative;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -475,6 +481,19 @@ async function printImage(panelElement, contentElement, titleValue) {
       align-items: center;
       margin: ${contentMargin}
       ${boxShadowStyle}
+    }
+    .bg-sheet {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-color: white;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      z-index: 1;
     }
     .vertical-content {
       //border: solid 1px green;
@@ -509,12 +528,13 @@ async function printImage(panelElement, contentElement, titleValue) {
     @media print {
       .vertical-content { justify-content: ${horiAlign}; }
       .opacity-controls { display: none !important; }
+      .bg-sheet { display: none !important; }
+      body { ${printBgStyle} }
       @page { size: ${paperSize}; margin: ${paperMargin}; }
     }
   </style>
 </head>
 <body>
-  <div class="seal-stamp"></div>
   <div class="opacity-controls">
     <button id="opacity-plus" title="增大透明度">+</button>
     <button id="opacity-minus" title="减小透明度">-</button>
@@ -527,12 +547,18 @@ async function printImage(panelElement, contentElement, titleValue) {
     <button id="print-btn" title="打印页面">🖨️</button>
     <!-- 新增：随机背景图按钮 -->
     <button id="random-bg-btn" title="随机更换背景图">🎲</button>
+    <!-- 上一个背景图按钮（历史回溯） -->
+    <button id="bg-prev-btn" title="上一个背景图" disabled>⏮</button>
     <!-- 垂直居中按钮 -->
     <button id="valign-center" title="文字垂直居中">↕️</button>
+    <!-- 背景图缩放到页面尺寸 -->
+    <button id="bg-fit-btn" title="背景图缩放到页面尺寸">⤢</button>
   </div>
   <div class="print-content" id="print-content">
+    <div class="seal-stamp"></div>
     ${contentClone.innerHTML}
   </div>
+  <div class="bg-sheet" id="bg-sheet"></div>
   <script>
     (function() {
       var contentDiv = document.getElementById('print-content');
@@ -574,9 +600,8 @@ async function printImage(panelElement, contentElement, titleValue) {
       
       // 更新背景图
       function updateBackgroundImage() {
-        const bodyElement = document.body;
         var newBgUrl = getRandomBackgroundImage();
-        bodyElement.style.backgroundImage = 'url(' + newBgUrl + ')';
+        pushNewBackground(newBgUrl);
         // 把新选中的背景图序号回传给主页面，写入去重记忆
         if (window.opener) {
           try {
@@ -677,12 +702,99 @@ async function printImage(panelElement, contentElement, titleValue) {
         }
       }
 
-      // 打印
+      // 打印（打印时背景铺满页面由 @media print 规则处理，此处保持缩放态）
       if (printBtn) {
         printBtn.onclick = function() {
           window.print();
         }
       }
+
+      // ===== 背景图缩放到页面尺寸（A4/A5/手机） =====
+      var bgImageUrl = '${bgImageUrl}';
+      var bgFitBtn = document.getElementById('bg-fit-btn');
+      var bgSheet = document.getElementById('bg-sheet');
+      var bodyEl = document.body;
+      var bgFitted = false;
+      function getSheetSize() {
+        var s = '${paperSize}';
+        if (s.indexOf('A4') === 0) {
+          return s.indexOf('landscape') > -1 ? { w: '297mm', h: '210mm' } : { w: '210mm', h: '297mm' };
+        } else if (s.indexOf('A5') === 0) {
+          return s.indexOf('landscape') > -1 ? { w: '210mm', h: '148mm' } : { w: '148mm', h: '210mm' };
+        } else {
+          return { w: '70mm', h: '120mm' }; // 手机
+        }
+      }
+      function applyFit(fitted) {
+        if (fitted) {
+          var size = getSheetSize();
+          bgSheet.style.width = size.w;
+          bgSheet.style.height = size.h;
+          if (bgImageUrl) {
+            bgSheet.style.backgroundImage = "url('" + bgImageUrl + "')";
+          } else {
+            bgSheet.style.backgroundColor = 'white';
+          }
+          bgSheet.style.display = 'block';
+          bodyEl.style.backgroundImage = 'none';
+          bodyEl.style.backgroundColor = '#9aa3af';
+          if (contentDiv) { contentDiv.style.position = 'relative'; contentDiv.style.zIndex = '2'; }
+          bgFitBtn.style.color = '#ffd700';
+        } else {
+          bgSheet.style.display = 'none';
+          bgSheet.style.backgroundImage = '';
+          bgSheet.style.backgroundColor = '';
+          bodyEl.style.backgroundImage = bgImageUrl ? "url('" + bgImageUrl + "')" : 'none';
+          bodyEl.style.backgroundColor = '';
+          if (contentDiv) { contentDiv.style.position = ''; contentDiv.style.zIndex = ''; }
+          bgFitBtn.style.color = '';
+        }
+      }
+      if (bgFitBtn) {
+        bgFitBtn.onclick = function() { bgFitted = !bgFitted; applyFit(bgFitted); };
+      }
+      // 默认以缩放态打开：背景图缩小到页面尺寸
+      bgFitted = true;
+      applyFit(true);
+
+      // 动态打印背景规则：跟随当前背景图，覆盖静态初始图，保证随机换背景后打印输出一致
+      var dynPrintStyle = document.createElement('style');
+      dynPrintStyle.id = 'dyn-print-bg';
+      dynPrintStyle.textContent = "@media print { body { background-image: url('" + bgImageUrl + "') !important; } }";
+      document.head.appendChild(dynPrintStyle);
+
+      // ===== 背景图历史回溯（最多5个），"上一个"按钮 =====
+      var bgStack = [bgImageUrl];  // 背景历史栈，第0位为初始背景
+      var bgIdx = 0;               // 当前背景在栈中的索引
+      var bgPrevBtn = document.getElementById('bg-prev-btn');
+
+      function applyBackgroundUrl(url) {
+        bgImageUrl = url;
+        if (bgSheet) bgSheet.style.backgroundImage = "url('" + url + "')";
+        if (!bgFitted) document.body.style.backgroundImage = "url('" + url + "')";
+        var dynS = document.getElementById('dyn-print-bg');
+        if (dynS) dynS.textContent = "@media print { body { background-image: url('" + url + "') !important; } }";
+        updatePrevBtn();
+      }
+      function updatePrevBtn() {
+        if (bgPrevBtn) bgPrevBtn.disabled = bgIdx <= 0;
+      }
+      function pushNewBackground(url) {
+        bgStack = bgStack.slice(0, bgIdx + 1);  // 丢弃当前之后的回溯分支
+        bgStack.push(url);
+        if (bgStack.length > 5) bgStack.shift(); // 最多保留5个
+        bgIdx = bgStack.length - 1;
+        applyBackgroundUrl(url);
+      }
+      if (bgPrevBtn) {
+        bgPrevBtn.onclick = function() {
+          if (bgIdx > 0) {
+            bgIdx--;
+            applyBackgroundUrl(bgStack[bgIdx]);
+          }
+        };
+      }
+      updatePrevBtn();
 
       // 初始化
       updateOpacity();
@@ -696,19 +808,14 @@ async function printImage(panelElement, contentElement, titleValue) {
     const blobUrl = URL.createObjectURL(blob);
     const printWindow = window.open(blobUrl, '_blank');
     
+    // 读取"弹"复选框：选中则进入打印页后自动弹出系统打印窗口，否则不弹
+    const autoPrintEl = document.getElementById('fj-auto-print');
+    const autoPrint = autoPrintEl ? autoPrintEl.checked : false;
+
     if (printWindow) {
       printWindow.onload = () => {
         setTimeout(() => {
-          printWindow.print();
-          
-          const handleFocus = () => {
-            setTimeout(() => {
-              //if (!printWindow.closed) printWindow.close();
-            }, 100);
-            printWindow.removeEventListener('focus', handleFocus);
-          };
-          printWindow.addEventListener('focus', handleFocus);
-          
+          if (autoPrint) printWindow.print();
           setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
         }, 300);
       };
@@ -1932,6 +2039,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
       <button id="fj-copy-original" style="background:#f1f5f9; border:none; padding:6px 10px; border-radius:20px; cursor:pointer;" title="复制原文本">📄</button>
       <button id="fj-copy-text" style="background:#f1f5f9; border:none; padding:6px 14px; border-radius:20px; cursor:pointer;" title="复制编辑后文本">📋</button>
       <input type="checkbox" id="fj-auto-close" style="width:10px; cursor: point; margin: 0;"></input><label title="打印/下载后自动关闭">关</label>
+      <input type="checkbox" id="fj-auto-print" style="width:10px; cursor: point; margin: 0;"></input><label title="进入打印页后自动弹出系统打印窗口">弹</label>
       <button id="fj-print-image" style="background:#2c3e66; border:none; padding:6px 14px; border-radius:20px; cursor:pointer; color:white; width: 98px;" title="默认为A5尺寸，无页眉页脚">🖨️ 打印</button>
       <button id="fj-download-image" style="background:#2c3e66; border:none; padding:6px 14px; border-radius:20px; cursor:pointer; color:white;">📸 下载图片</button>
     </div>
@@ -1980,6 +2088,19 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   autoCopyCheckbox.addEventListener('change', (e) => {
     chrome.storage.sync.set({ autoCopy: e.target.checked });
   });  
+
+  // 读取保存的自动弹出打印设置
+  let autoPrintCheckbox = document.getElementById('fj-auto-print');
+  chrome.storage.sync.get(['autoPrint'], (result) => {
+    if (autoPrintCheckbox) {
+      autoPrintCheckbox.checked = result.autoPrint || false;
+    }
+  });
+
+  // 保存自动弹出打印设置
+  autoPrintCheckbox.addEventListener('change', (e) => {
+    chrome.storage.sync.set({ autoPrint: e.target.checked });
+  });
 
   // ========== 纸张尺寸记忆功能 ==========
   const paperSizeSelect = document.getElementById('fj-paper-size');

@@ -482,6 +482,13 @@ async function printImage(panelElement, contentElement, titleValue) {
       margin: ${contentMargin}
       ${boxShadowStyle}
     }
+    .fit-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
     .bg-sheet {
       display: none;
       position: absolute;
@@ -529,6 +536,8 @@ async function printImage(panelElement, contentElement, titleValue) {
       .vertical-content { justify-content: ${horiAlign}; }
       .opacity-controls { display: none !important; }
       .bg-sheet { display: none !important; }
+      .print-content { transform: none !important; }
+      .fit-wrap { transform: none !important; }
       body { ${printBgStyle} }
       @page { size: ${paperSize}; margin: ${paperMargin}; }
     }
@@ -554,11 +563,13 @@ async function printImage(panelElement, contentElement, titleValue) {
     <!-- 背景图缩放到页面尺寸 -->
     <button id="bg-fit-btn" title="背景图缩放到页面尺寸">⤢</button>
   </div>
-  <div class="print-content" id="print-content">
-    <div class="seal-stamp"></div>
-    ${contentClone.innerHTML}
+  <div class="fit-wrap" id="fit-wrap">
+    <div class="print-content" id="print-content">
+      <div class="seal-stamp"></div>
+      ${contentClone.innerHTML}
+    </div>
+    <div class="bg-sheet" id="bg-sheet"></div>
   </div>
-  <div class="bg-sheet" id="bg-sheet"></div>
   <script>
     (function() {
       var contentDiv = document.getElementById('print-content');
@@ -713,6 +724,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       var bgImageUrl = '${bgImageUrl}';
       var bgFitBtn = document.getElementById('bg-fit-btn');
       var bgSheet = document.getElementById('bg-sheet');
+      var fitWrap = document.getElementById('fit-wrap');
       var bodyEl = document.body;
       var bgFitted = false;
       function getSheetSize() {
@@ -724,6 +736,11 @@ async function printImage(panelElement, contentElement, titleValue) {
         } else {
           return { w: '70mm', h: '120mm' }; // 手机
         }
+      }
+      // 仅 A4 时做高度适配
+      function isA4() {
+        var s = '${paperSize}';
+        return s.indexOf('A4') === 0;
       }
       function applyFit(fitted) {
         if (fitted) {
@@ -739,6 +756,18 @@ async function printImage(panelElement, contentElement, titleValue) {
           bodyEl.style.backgroundImage = 'none';
           bodyEl.style.backgroundColor = '#9aa3af';
           if (contentDiv) { contentDiv.style.position = 'relative'; contentDiv.style.zIndex = '2'; }
+          // 容器高度撑到纸张高度，使纸张在容器内占满、内容在纸上居中
+          if (fitWrap) fitWrap.style.height = size.h;
+          // 仅 A4 时把页面高度缩放到视口高度，并对齐到顶部；A5/手机保持 100%
+          var zoom = 1;
+          if (isA4()) {
+            zoom = window.innerHeight / fitWrap.offsetHeight;
+          }
+          if (fitWrap) {
+            fitWrap.style.transform = zoom === 1 ? '' : 'scale(' + zoom + ')';
+            fitWrap.style.transformOrigin = 'top center';
+          }
+          bodyEl.style.alignItems = zoom === 1 ? '' : 'flex-start';
           bgFitBtn.style.color = '#ffd700';
         } else {
           bgSheet.style.display = 'none';
@@ -747,6 +776,12 @@ async function printImage(panelElement, contentElement, titleValue) {
           bodyEl.style.backgroundImage = bgImageUrl ? "url('" + bgImageUrl + "')" : 'none';
           bodyEl.style.backgroundColor = '';
           if (contentDiv) { contentDiv.style.position = ''; contentDiv.style.zIndex = ''; }
+          if (fitWrap) {
+            fitWrap.style.height = '';
+            fitWrap.style.transform = '';
+            fitWrap.style.transformOrigin = '';
+          }
+          bodyEl.style.alignItems = '';
           bgFitBtn.style.color = '';
         }
       }

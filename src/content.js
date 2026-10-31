@@ -2483,7 +2483,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
         bgPicker = document.createElement('div');
         bgPicker.id = 'fj-bg-picker';
         bgPicker.style.cssText = 'position:fixed; left:' + rect.right + 'px; top:' + rect.top + 'px; width:430px; height:' + rect.height + 'px; background:#fff; z-index:99999; overflow:hidden; display:flex; flex-direction:column; box-shadow:2px 0 14px rgba(0,0,0,0.25); padding:12px; box-sizing:border-box; border-radius:16px; transform:translateX(-100%); opacity:0; transition:transform 0.25s ease, opacity 0.25s ease;';
-        let inner = '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; background:#fff; padding:4px 0;"><b style="font-size:0.95rem;">选择背景图</b><button id="fj-bg-picker-close" style="border:none; background:none; cursor:pointer; font-size:1.3rem; line-height:1;">✕</button></div>';
+        let inner = '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; background:#fff; padding:4px 0;"><b style="font-size:0.95rem;">选择背景图</b><div id="fj-bg-opacity-ctl" style="display:flex; align-items:center; gap:5px; margin-left:8px;"><button id="fj-bg-opacity-minus" style="width:24px; height:24px; border-radius:50%; border:none; background:#e2e8f0; cursor:pointer; line-height:1;" title="降低文字底层透明度">−</button><span id="fj-bg-opacity-val" style="font-size:0.75rem; color:#475569; min-width:34px; text-align:center;">70%</span><button id="fj-bg-opacity-plus" style="width:24px; height:24px; border-radius:50%; border:none; background:#e2e8f0; cursor:pointer; line-height:1;" title="提高文字底层透明度">+</button></div><button id="fj-bg-picker-close" style="border:none; background:none; cursor:pointer; font-size:1.3rem; line-height:1;">✕</button></div>';
         inner += '<div id="fj-bg-scroll" style="flex:1; overflow-y:auto; overflow-x:hidden; position:relative;">';
         inner += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">';
         for (let i = 1; i <= bgTotal; i++) {
@@ -2525,6 +2525,51 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
           bgPicker.style.opacity = '1';
         });
         bgPicker.querySelector('#fj-bg-picker-close').addEventListener('click', () => bgPicker.remove());
+        // 文字底层透明度调节：实时更新预览白色层并保存
+        // 若开启"透明度跟随背景图"，读写当前背景图专属透明度（opacityMemoryMap），否则用全局 bgOpacity
+        let bgOpacityVal = 0.7;
+        const applyOpacityUI = () => {
+          const valEl = bgPicker.querySelector('#fj-bg-opacity-val');
+          if (valEl) valEl.textContent = Math.round(bgOpacityVal * 100) + '%';
+          const clone = document.getElementById('clone-content-area');
+          if (clone) clone.style.background = 'rgba(255,255,255,' + bgOpacityVal + ')';
+        };
+        const loadOpacityFor = (path, cb) => {
+          chrome.storage.sync.get(['opacityMemoryEnabled', 'opacityMemoryMap', 'bgOpacity'], (r) => {
+            let v = r.bgOpacity || 0.7;
+            if (r.opacityMemoryEnabled && path && (r.opacityMemoryMap || {})[path] != null) {
+              v = r.opacityMemoryMap[path];
+            }
+            bgOpacityVal = v;
+            applyOpacityUI();
+            if (cb) cb(r);
+          });
+        };
+        const saveOpacity = () => {
+          chrome.storage.sync.get(['opacityMemoryEnabled', 'opacityMemoryMap', 'bgOpacity'], (r) => {
+            if (r.opacityMemoryEnabled) {
+              const path = randomBg || r.bgImage || '';
+              const map = Object.assign({}, r.opacityMemoryMap || {});
+              if (path) {
+                map[path] = bgOpacityVal;
+                chrome.storage.sync.set({ opacityMemoryMap: map });
+              }
+            } else {
+              chrome.storage.sync.set({ bgOpacity: bgOpacityVal });
+            }
+          });
+        };
+        loadOpacityFor(randomBg || null);
+        bgPicker.querySelector('#fj-bg-opacity-minus').addEventListener('click', () => {
+          bgOpacityVal = Math.max(0.2, bgOpacityVal - 0.05);
+          applyOpacityUI();
+          saveOpacity();
+        });
+        bgPicker.querySelector('#fj-bg-opacity-plus').addEventListener('click', () => {
+          bgOpacityVal = Math.min(0.95, bgOpacityVal + 0.05);
+          applyOpacityUI();
+          saveOpacity();
+        });
         // 上下翻页 + 到顶/到底：固定箭头按钮
         bgPicker.querySelector('#fj-bg-top').addEventListener('click', () => {
           bgPicker.querySelector('#fj-bg-scroll').scrollTo({ top: 0, behavior: 'auto' });
@@ -2551,6 +2596,10 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
             } else {
               captureAndDownload(panel, contentArea, titleInput.value, true);
             }
+            // 若开启"透明度跟随背景图"，切换为所选背景的专属透明度
+            chrome.storage.sync.get(['opacityMemoryEnabled'], (r) => {
+              if (r.opacityMemoryEnabled) loadOpacityFor(randomBg);
+            });
           });
         });
       });

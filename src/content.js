@@ -15,7 +15,29 @@ let horiAlign = 'center';
 let randomBg = '';
 
 // ===== 随机背景图去重：持久记忆最近用过的图，降低重复率 =====
-const BG_TOTAL = 100;                      // 背景图数量：01-100
+let bgTotal = 100;                      // 背景图数量：01-N（插件加载时自动检测实际张数）
+const BG_DETECT_MAX = 999;              // 自动检测的最大扫描上限
+let bgDetectDone = false;
+
+// 插件加载时自动检测 image/ 目录实际有多少张背景图（01..N，连续缺失 3 张即停）
+async function detectBgTotal() {
+  if (bgDetectDone) return bgTotal;
+  let last = 0, miss = 0;
+  for (let i = 1; i <= BG_DETECT_MAX; i++) {
+    const nn = String(i).padStart(2, '0');
+    let ok = false;
+    try {
+      ok = await fetch(chrome.runtime.getURL('image/' + nn + '.jpg'), { method: 'HEAD' }).then(r => r.ok);
+    } catch (e) { ok = false; }
+    if (ok) { last = i; miss = 0; }
+    else if (++miss >= 3) break;
+  }
+  bgTotal = last > 0 ? last : 1;
+  bgDetectDone = true;
+  console.log('自动检测背景图张数:', bgTotal);
+  return bgTotal;
+}
+detectBgTotal();
 const BG_HISTORY_KEY = 'randomBgHistory'; // 最近使用记录（storage.local）
 const BG_HISTORY_SIZE = 50;               // 记忆条数：越大越不易重复
 
@@ -25,7 +47,7 @@ async function loadBgHistory() {
     const r = await chrome.storage.local.get([BG_HISTORY_KEY]);
     const h = r[BG_HISTORY_KEY];
     return Array.isArray(h)
-      ? h.filter(n => Number.isInteger(n) && n >= 1 && n <= BG_TOTAL)
+      ? h.filter(n => Number.isInteger(n) && n >= 1 && n <= bgTotal)
       : [];
   } catch (e) { return []; }
 }
@@ -43,15 +65,15 @@ async function rememberBgIndex(idx) {
 // 在排除当前图与历史后，从剩余候选中随机取一个序号
 async function pickRandomBgIndex(excludeIndex) {
   let banned = await loadBgHistory();
-  if (Number.isInteger(excludeIndex) && excludeIndex >= 1 && excludeIndex <= BG_TOTAL) {
+  if (Number.isInteger(excludeIndex) && excludeIndex >= 1 && excludeIndex <= bgTotal) {
     banned = banned.concat([excludeIndex]);
   }
   const bannedSet = new Set(banned);
   let candidates = [];
-  for (let i = 1; i <= BG_TOTAL; i++) if (!bannedSet.has(i)) candidates.push(i);
+  for (let i = 1; i <= bgTotal; i++) if (!bannedSet.has(i)) candidates.push(i);
   // 全部用尽时（极罕见），退化为仅排除当前
   if (!candidates.length) {
-    for (let i = 1; i <= BG_TOTAL; i++) if (i !== excludeIndex) candidates.push(i);
+    for (let i = 1; i <= bgTotal; i++) if (i !== excludeIndex) candidates.push(i);
   }
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
@@ -596,15 +618,15 @@ async function printImage(panelElement, contentElement, titleValue) {
         var banned = bgHistory.slice();
         if (lastBgIdx > 0) banned.push(lastBgIdx);
         var candidates = [];
-        for (var i = 1; i <= 95; i++) {
+        for (var i = 1; i <= ${bgTotal}; i++) {
           if (banned.indexOf(i) === -1) candidates.push(i);
         }
         if (candidates.length === 0) {
-          for (var k = 1; k <= 95; k++) { if (k !== lastBgIdx) candidates.push(k); }
+          for (var k = 1; k <= ${bgTotal}; k++) { if (k !== lastBgIdx) candidates.push(k); }
         }
         var randomNum = candidates[Math.floor(Math.random() * candidates.length)];
         lastBgIdx = randomNum;
-        // 补零成两位数（01-95）
+        // 补零成两位数（01-N）
         var imgName = randomNum.toString().padStart(2, '0') + '.jpg';
         // 返回背景图URL（根据实际路径调整）
         return '${chrome.runtime.getURL('image/')}' + imgName;
@@ -2456,7 +2478,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
         let inner = '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; background:#fff; padding:4px 0;"><b style="font-size:0.95rem;">选择背景图</b><button id="fj-bg-picker-close" style="border:none; background:none; cursor:pointer; font-size:1.3rem; line-height:1;">✕</button></div>';
         inner += '<div id="fj-bg-scroll" style="flex:1; overflow-y:auto; overflow-x:hidden; position:relative;">';
         inner += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">';
-        for (let i = 1; i <= 100; i++) {
+        for (let i = 1; i <= bgTotal; i++) {
           const nn = String(i).padStart(2, '0');
           const url = chrome.runtime.getURL('image/' + nn + '.jpg');
           inner += '<div class="fj-bg-cell" data-bg="' + nn + '" style="border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; cursor:pointer; text-align:center; background:#f8fafc;"><img src="' + url + '" style="width:100%; height:130px; object-fit:cover; display:block;"><div style="font-size:0.72rem; padding:2px; color:#475569;">' + nn + '</div></div>';
@@ -2547,7 +2569,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     let copyText = titleValue + '\n' + initialText;
     const withTagCheckbox = document.getElementById('fj-with-tag');
     if (withTagCheckbox.checked) {
-      copyText += "\n#诗词 #国学 #古风 #国风 #中国文化";
+      copyText += "\n#诗词 #国学 #古风 #中国文化";
     }
     try { await navigator.clipboard.writeText(copyText); showToast('✅ 文本已复制', 1500); } 
     catch { showToast('❌ 复制失败', 1500); }

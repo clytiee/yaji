@@ -1,6 +1,6 @@
-// 生成 01-13 的默认背景图列表
+// 生成 01-13 的默认背景图列表（枚举上限放宽，实际渲染时会跳过不存在的文件）
 const defaultBgImages = [];
-for (let i = 1; i <= 100; i++) {
+for (let i = 1; i <= 200; i++) {
   const num = i.toString().padStart(2, '0');
   defaultBgImages.push({
     name: num,

@@ -910,8 +910,6 @@ function attachPreviewClose(cloneContainer) {
   `;
   btn.onclick = () => {
     cloneContainer.remove();
-    const cb = document.getElementById('fj-preview-image-cb');
-    if (cb) cb.checked = false;
   };
   cloneContainer.appendChild(btn);
 }
@@ -980,6 +978,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
       justify-content: center;
       align-items: center;
       min-height: 140mm;
+      box-shadow: ${isPreview ? '0 0 40px rgba(96, 165, 250, 0.5), 0 0 80px rgba(96, 165, 250, 0.3)' : 'none'};
       ${bgStyle}
     `;
     //console.log("cloneContainer.style.cssText:",cloneContainer.style.cssText);
@@ -1408,7 +1407,8 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     border-radius: 8px;
     padding: 6px 12px;
     background: #f8fafc;
-    width: 285px;
+    flex: 1;
+    min-width: 180px;
   `;
   
   subtitleInput.style.cssText = `
@@ -1420,7 +1420,8 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     padding: 6px 12px;
     background: #f8fafc;
     color: #64748b;
-    width: 185px;
+    flex: 1;
+    min-width: 120px;
   `;
   
   titleContainer.appendChild(titleIcon);
@@ -1526,7 +1527,6 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   `;
   previewCloseBtn.onclick = () => {
     previewContainer.style.display = 'none';
-    document.getElementById('fj-preview-image-cb').checked = false;
   };
 
   // 布局模式工具栏
@@ -1576,7 +1576,9 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     background: white;
     flex: 1;
     overflow-y: auto;
-    min-height: 300px;`;
+    min-height: 300px;
+    max-width: 100%;
+    box-sizing: border-box;`;
   
   // ========== 功能函数 ==========
   
@@ -2212,12 +2214,15 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
         if (selectedSize === 'A5') {
           contentArea.style.width = '148mm';
           contentArea.style.height = '210mm';
+          panel.style.width = '190mm';
         } else if (selectedSize === 'A4') {
           contentArea.style.width = '210mm';
           contentArea.style.height = '297mm';
+          panel.style.width = '210mm';
         } else if (selectedSize === 'mobile') {
           contentArea.style.width = '70mm';
           contentArea.style.height = '120mm';
+          panel.style.width = '190mm';
         }
       }
       
@@ -2435,12 +2440,15 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
           if (currentPaperSize === 'A5') {
             contentArea.style.width = '148mm';
             contentArea.style.height = '210mm';
+            panel.style.width = '190mm';
           } else if (currentPaperSize === 'A4') {
             contentArea.style.width = '210mm';
             contentArea.style.height = '297mm';
+            panel.style.width = '210mm';
           } else if (currentPaperSize === 'mobile') {
             contentArea.style.width = '70mm';
             contentArea.style.height = '120mm';
+            panel.style.width = '190mm';
           }
         }
         console.log("[DEBUG] 调整内容区域大小: ", contentArea.style.width, contentArea.style.height);

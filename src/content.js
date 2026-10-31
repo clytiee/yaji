@@ -15,7 +15,7 @@ let horiAlign = 'center';
 let randomBg = '';
 
 // ===== 随机背景图去重：持久记忆最近用过的图，降低重复率 =====
-const BG_TOTAL = 95;                      // 背景图数量：01-95
+const BG_TOTAL = 100;                      // 背景图数量：01-100
 const BG_HISTORY_KEY = 'randomBgHistory'; // 最近使用记录（storage.local）
 const BG_HISTORY_SIZE = 50;               // 记忆条数：越大越不易重复
 
@@ -221,7 +221,7 @@ function extractTextFromDiv(divElement) {
 async function printImage(panelElement, contentElement, titleValue) {
   try {
     // ========== 新增：读取保存的背景图和透明度 ==========
-    const syncResult = await chrome.storage.sync.get(['bgImage', 'bgOpacity', 'bgImageIsCustom', 'plainMode']);
+    const syncResult = await chrome.storage.sync.get(['bgImage', 'bgOpacity', 'bgImageIsCustom', 'plainMode', 'bgHistorySize']);
     console.log('syncResult:', syncResult);
     let bgImageUrl;
     let bgOpacity = syncResult.bgOpacity || 0.7;
@@ -379,10 +379,11 @@ async function printImage(panelElement, contentElement, titleValue) {
     let bgHistory = await loadBgHistory();
     let lastBgIdx = -1;
     if (randomBg) {
-      const m = randomBg.match(/(\d{2})\.jpg$/);
+      const m = randomBg.match(/(\d{1,3})\.jpg$/);
       if (m) lastBgIdx = parseInt(m[1], 10);
     }
     const bgHistoryJson = JSON.stringify(bgHistory);
+    const bgHistorySize = syncResult.bgHistorySize || 5;  // 随机背景不重复个数（历史栈容量）
     
     // 构建 HTML 内容
     const htmlContent = `<!DOCTYPE html>
@@ -817,7 +818,7 @@ async function printImage(panelElement, contentElement, titleValue) {
       function pushNewBackground(url) {
         bgStack = bgStack.slice(0, bgIdx + 1);  // 丢弃当前之后的回溯分支
         bgStack.push(url);
-        if (bgStack.length > 5) bgStack.shift(); // 最多保留5个
+        if (bgStack.length > ${bgHistorySize}) bgStack.shift(); // 最多保留 N 个
         bgIdx = bgStack.length - 1;
         applyBackgroundUrl(url);
       }
@@ -948,6 +949,7 @@ async function captureAndDownload(panelElement, contentElement, titleValue, isPr
       min-width: 80mm;
       z-index: 9999;
       font-family: '方正金陵', 'FZJinL-B_GBJF', '华文楷书', 'KaiTi', '宋体', serif;
+      background-color: white;
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
@@ -1415,16 +1417,16 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   const epigraphToolbar = document.createElement('div');
   epigraphToolbar.className = 'fj-epigraph-toolbar';
   epigraphToolbar.style.cssText = `
-    padding: 10px 20px;
+    padding: 8px 12px;
     border-bottom: 1px solid #e2e8f0;
     background: #fef9e6;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
     font-size: 0.8rem;
     font-family: system-ui;
     flex-wrap: wrap;
-    width: 93%;
+    width: 96%;
   `;
   epigraphToolbar.innerHTML = `
     <span>📜 题记</span>
@@ -1452,6 +1454,9 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
 
       <button id="fj-random-bg" style="background:#fef9e6; border:none; cursor:pointer;" title="随机背景图">
         <span>🎲</span>
+      </button>
+      <button id="fj-pick-bg" style="background:#fef9e6; border:none; cursor:pointer;" title="选择背景图">
+        <span>🖼️</span>
       </button>
     </label>
  `;
@@ -1506,15 +1511,15 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   const layoutToolbar = document.createElement('div');
   layoutToolbar.className = 'fj-layout-toolbar';
   layoutToolbar.style.cssText = `
-    padding: 8px 20px;
+    padding: 6px 10px;
     border-bottom: 1px solid #e2e8f0;
     background: #f0f9ff;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 5px;
     font-size: 0.8rem;
     font-family: system-ui;
-    width: 93%;
+    width: 96%;
   `;
   let layoutMode = 'portrait';
   layoutToolbar.innerHTML = `
@@ -1527,12 +1532,11 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
     <label style="display: flex; align-items: center; gap: 4px;">
       <input type="checkbox" id="fj-remember-paper-size"> 记住
     </label>
-
-    <span style="padding-left: 10px;">方向</span>
+    <span style="padding-left: 4px;">方向</span>
     <label><input type="radio" name="layout-mode" value="portrait" checked> 竖向</label>
     <label><input type="radio" name="layout-mode" value="landscape"> 横向</label>
 
-    <span style="padding-left: 5px";>📏 行距</span>
+    <span style="padding-left: 3px";>📏 行距</span>
     <button id="fj-lineheight-minus" style="width:28px; height:28px; border:1px solid #cbd5e1; border-radius:6px; background:#f1f5f9; cursor:pointer;">−</button>
     <span id="fj-lineheight-val" style="min-width:20px; text-align:center;">${currentLineHeight.toFixed(1)}</span>
     <button id="fj-lineheight-plus" style="width:28px; height:28px; border:1px solid #cbd5e1; border-radius:6px; background:#f1f5f9; cursor:pointer;">+</button>
@@ -1894,7 +1898,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
 
     let curIndex = null;
     if (randomBg) {
-      const m = randomBg.match(/(\d{2})\.jpg$/);
+      const m = randomBg.match(/(\d{1,3})\.jpg$/);
       if (m) curIndex = parseInt(m[1], 10);
     }
     const idx = await pickRandomBgIndex(curIndex);
@@ -2123,6 +2127,25 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
   autoCopyCheckbox.addEventListener('change', (e) => {
     chrome.storage.sync.set({ autoCopy: e.target.checked });
   });  
+
+  // 读取保存的预览复选框状态
+  const previewImageCheckbox = document.getElementById('fj-preview-image-cb');
+  chrome.storage.sync.get(['previewChecked'], (result) => {
+    if (previewImageCheckbox) {
+      previewImageCheckbox.checked = result.previewChecked || false;
+      // 恢复勾选时自动预览（使用设置页里的默认背景图）
+      if (previewImageCheckbox.checked) {
+        captureAndDownload(panel, contentArea, titleInput.value, true);
+      }
+    }
+  });
+
+  // 保存预览复选框状态
+  if (previewImageCheckbox) {
+    previewImageCheckbox.addEventListener('change', (e) => {
+      chrome.storage.sync.set({ previewChecked: e.target.checked });
+    });
+  }
 
   // 读取保存的自动弹出打印设置
   let autoPrintCheckbox = document.getElementById('fj-auto-print');
@@ -2419,11 +2442,103 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
         captureAndDownload(panel, contentArea, titleInput.value, true);
       });
     }
+
+    // 选择背景图：右侧打开面板，每行2张，垂直滚动，点击应用
+    const pickBgBtn = document.getElementById('fj-pick-bg');
+    if (pickBgBtn) {
+      pickBgBtn.addEventListener('click', () => {
+        let bgPicker = document.getElementById('fj-bg-picker');
+        if (bgPicker) { bgPicker.remove(); return; }
+        const rect = panel.getBoundingClientRect();
+        bgPicker = document.createElement('div');
+        bgPicker.id = 'fj-bg-picker';
+        bgPicker.style.cssText = 'position:fixed; left:' + rect.right + 'px; top:' + rect.top + 'px; width:430px; height:' + rect.height + 'px; background:#fff; z-index:99999; overflow:hidden; display:flex; flex-direction:column; box-shadow:2px 0 14px rgba(0,0,0,0.25); padding:12px; box-sizing:border-box; border-radius:16px; transform:translateX(-100%); opacity:0; transition:transform 0.25s ease, opacity 0.25s ease;';
+        let inner = '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; background:#fff; padding:4px 0;"><b style="font-size:0.95rem;">选择背景图</b><button id="fj-bg-picker-close" style="border:none; background:none; cursor:pointer; font-size:1.3rem; line-height:1;">✕</button></div>';
+        inner += '<div id="fj-bg-scroll" style="flex:1; overflow-y:auto; overflow-x:hidden; position:relative;">';
+        inner += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">';
+        for (let i = 1; i <= 100; i++) {
+          const nn = String(i).padStart(2, '0');
+          const url = chrome.runtime.getURL('image/' + nn + '.jpg');
+          inner += '<div class="fj-bg-cell" data-bg="' + nn + '" style="border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; cursor:pointer; text-align:center; background:#f8fafc;"><img src="' + url + '" style="width:100%; height:130px; object-fit:cover; display:block;"><div style="font-size:0.72rem; padding:2px; color:#475569;">' + nn + '</div></div>';
+        }
+        inner += '</div>';
+        inner += '</div>';
+        inner += '<div id="fj-bg-nav" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; align-items:center; gap:8px; z-index:20;">';
+        inner += '<button id="fj-bg-top" style="width:34px; height:34px; border-radius:50%; border:none; background:rgba(15,23,42,0.35); color:#fff; font-size:1rem; cursor:pointer; line-height:1;" title="到顶">⏫</button>';
+        inner += '<button id="fj-bg-prev" style="width:34px; height:34px; border-radius:50%; border:none; background:rgba(15,23,42,0.35); color:#fff; font-size:1.1rem; cursor:pointer; line-height:1;" title="上翻">▲</button>';
+        inner += '<button id="fj-bg-next" style="width:34px; height:34px; border-radius:50%; border:none; background:rgba(15,23,42,0.35); color:#fff; font-size:1.1rem; cursor:pointer; line-height:1;" title="下翻">▼</button>';
+        inner += '<button id="fj-bg-bottom" style="width:34px; height:34px; border-radius:50%; border:none; background:rgba(15,23,42,0.35); color:#fff; font-size:1.1rem; cursor:pointer; line-height:1;" title="到底">⏬</button>';
+        inner += '</div>';  
+        bgPicker.innerHTML = inner;
+        document.body.appendChild(bgPicker);
+        // 每屏 2x5=10 张：按滚动区可视高度计算图片高度，使 5 行正好填满一屏
+        const bgScroll = bgPicker.querySelector('#fj-bg-scroll');
+        const availH = bgScroll.clientHeight;
+        const gap = 8;
+        const imgs = bgPicker.querySelectorAll('.fj-bg-cell img');
+        let imgH = Math.max(40, Math.floor((availH - 4 * gap) / 5 - 20));
+        imgs.forEach(img => { img.style.height = imgH + 'px'; });
+        // 实际测量第5行（第10张）底部，若超出可视区则按溢出量再缩小图片
+        const cells = bgPicker.querySelectorAll('.fj-bg-cell');
+        if (cells.length >= 10) {
+          const last = cells[9];
+          const bottom = last.offsetTop + last.offsetHeight;
+          if (bottom > availH) {
+            const overflow = bottom - availH;
+            imgH = Math.max(40, imgH - Math.ceil(overflow / 5) - 1);
+            imgs.forEach(img => { img.style.height = imgH + 'px'; });
+          }
+        }
+        // 从左往右滑出动画
+        requestAnimationFrame(() => {
+          bgPicker.style.transform = 'translateX(0)';
+          bgPicker.style.opacity = '1';
+        });
+        bgPicker.querySelector('#fj-bg-picker-close').addEventListener('click', () => bgPicker.remove());
+        // 上下翻页 + 到顶/到底：固定箭头按钮
+        bgPicker.querySelector('#fj-bg-top').addEventListener('click', () => {
+          bgPicker.querySelector('#fj-bg-scroll').scrollTo({ top: 0, behavior: 'auto' });
+        });
+        bgPicker.querySelector('#fj-bg-prev').addEventListener('click', () => {
+          const s = bgPicker.querySelector('#fj-bg-scroll');
+          s.scrollBy({ top: -s.clientHeight, behavior: 'auto' });
+        });
+        bgPicker.querySelector('#fj-bg-next').addEventListener('click', () => {
+          const s = bgPicker.querySelector('#fj-bg-scroll');
+          s.scrollBy({ top: s.clientHeight, behavior: 'auto' });
+        });
+        bgPicker.querySelector('#fj-bg-bottom').addEventListener('click', () => {
+          const s = bgPicker.querySelector('#fj-bg-scroll');
+          s.scrollTo({ top: s.scrollHeight, behavior: 'auto' });
+        });
+        bgPicker.querySelectorAll('.fj-bg-cell').forEach(cell => {
+          cell.addEventListener('click', () => {
+            randomBg = 'image/' + cell.dataset.bg + '.jpg';
+            // 只更换预览卡片的背景图，避免整体重新渲染闪烁
+            const clone = document.getElementById('fj-clone-container');
+            if (clone) {
+              clone.style.backgroundImage = "url('" + chrome.runtime.getURL(randomBg) + "')";
+            } else {
+              captureAndDownload(panel, contentArea, titleInput.value, true);
+            }
+          });
+        });
+      });
+    }
   }, 100);
 
   // 关闭和复制功能
-  closeBtn.addEventListener('click', () => overlay.remove());
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  function closeAllLayers() {
+    const pv = document.getElementById('fj-image-preview-container');
+    if (pv) pv.remove();
+    const cc = document.getElementById('fj-clone-container');
+    if (cc) cc.remove();
+    const picker = document.getElementById('fj-bg-picker');
+    if (picker) picker.remove();
+    overlay.remove();
+  }
+  closeBtn.addEventListener('click', closeAllLayers);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeAllLayers(); });
   panel.addEventListener('wheel', (e) => e.stopPropagation());
   
   // 监听复制原文本事件
@@ -2467,7 +2582,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
       setTimeout(() => {
         if (overlay && overlay.parentNode) {
           console.log('[DEBUG] 执行自动关闭');
-          overlay.remove();
+          closeAllLayers();
         }
       }, 1000);
     }
@@ -2493,7 +2608,7 @@ function showA5FloatingPanel(initialText, selectedTitle = '', selectedSubtitle =
       setTimeout(() => {
         if (overlay && overlay.parentNode) {
           console.log('[DEBUG] 执行自动关闭');
-          overlay.remove();
+          closeAllLayers();
         }
       }, 1000);
       // 自动关闭图片预览

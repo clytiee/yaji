@@ -19,7 +19,7 @@ let opacityMemoryMap = {}; // 存储每个背景图的透明度 {path: opacity}
 
 // 加载保存的设置
 function loadSettings() {
-  chrome.storage.sync.get(['bgImage', 'bgOpacity', 'previewHeight', 'opacityMemoryEnabled', 'opacityMemoryMap'], (result) => {
+  chrome.storage.sync.get(['bgImage', 'bgOpacity', 'previewHeight', 'opacityMemoryEnabled', 'opacityMemoryMap', 'bgHistorySize'], (result) => {
     currentBgImage = result.bgImage || defaultBgImages[0].path;
     currentOpacity = result.bgOpacity || 0.7;
     previewHeight = result.previewHeight || 60;
@@ -33,6 +33,16 @@ function loadSettings() {
       memoryToggle.checked = opacityMemoryEnabled;
       // 绑定复选框事件
       memoryToggle.addEventListener('change', toggleOpacityMemory);
+    }
+
+    // 设置随机背景不重复个数
+    const bgHistoryInput = document.getElementById('bg-history');
+    if (bgHistoryInput) {
+      bgHistoryInput.value = result.bgHistorySize || 5;
+      bgHistoryInput.addEventListener('input', (e) => {
+        const v = parseInt(e.target.value, 10);
+        if (v && v >= 1) chrome.storage.sync.set({ bgHistorySize: v });
+      });
     }
 
     // 如果开启跟随且当前背景图有保存的透明度，优先使用
